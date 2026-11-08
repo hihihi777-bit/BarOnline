@@ -99,7 +99,7 @@ input:focus{border-color:#b14dff}
     <button class="btn btn-stop" id="btn-stop">Dừng</button>
   </div>
   <p class="status" id="music-status">Chưa phát nhạc — player hiện bên dưới khi phát</p>
-  <p class="hint">Nhạc được gửi sang các sân khấu đang kết nối. Trên điện thoại, bấm Bật nhạc nếu trình duyệt chặn tự phát. YouTube/SoundCloud có thể cần bấm ▶ trong khung phát.</p>
+  <p class="hint">Nhạc được gửi sang các sân khấu đang kết nối. Trên điện thoại, bấm Bật nhạc nếu trình duyệt chặn tự phát. SoundCloud: nếu trình duyệt chặn tự phát, bấm ▶ trong khung SoundCloud. Link riêng tư hoặc bị hạn chế nhúng có thể không phát được.</p>
   <div id="music-player-box">
     <iframe id="music-frame" allow="autoplay; encrypted-media; clipboard-write; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
     <audio id="music-audio" controls loop></audio>
@@ -495,14 +495,50 @@ function parseUrl(url) {
       embed: 'https://www.youtube.com/embed/' + id + '?autoplay=1&enablejsapi=1&loop=1&playlist=' + id + '&playsinline=1&rel=0&modestbranding=1'
     };
   }
-  if (url.includes('soundcloud.com')) {
+  if (/^https?:\/\/(?:[a-z0-9-]+\.)?soundcloud\.com\//i.test(url)) {
     return {
       type: 'sc',
-      embed: 'https://w.soundcloud.com/player/?url=' + encodeURIComponent(url) + '&auto_play=true&hide_related=true&show_comments=false&visual=false&show_teaser=false'
+      embed: 'https://w.soundcloud.com/player/?url=' + encodeURIComponent(url) + '&auto_play=false&hide_related=true&show_comments=false&visual=false&show_teaser=false'
     };
   }
   if (url.match(/\.(mp3|ogg|wav|m4a)(\?|$)/i)) return { type: 'audio', src: url };
   return { type: 'iframe', embed: url };
+}
+
+let adminScWidget = null;
+let adminScRequest = 0;
+let adminScApiPromise = null;
+function loadAdminScApi() {
+  if (window.SC && window.SC.Widget) return Promise.resolve(true);
+  if (adminScApiPromise) return adminScApiPromise;
+  adminScApiPromise = new Promise(resolve => {
+    const script = document.createElement('script');
+    script.src = 'https://w.soundcloud.com/player/api.js';
+    script.onload = () => resolve(!!(window.SC && window.SC.Widget));
+    script.onerror = () => resolve(false);
+    document.head.appendChild(script);
+  });
+  return adminScApiPromise;
+}
+async function setupAdminSc(frame, request) {
+  if (!await loadAdminScApi() || request !== adminScRequest) {
+    if (request === adminScRequest) document.getElementById('music-status').textContent = 'SoundCloud: hãy bấm ▶ trong khung nhạc.';
+    return;
+  }
+  const widget = window.SC.Widget(frame);
+  adminScWidget = widget;
+  widget.bind(window.SC.Widget.Events.READY, () => {
+    if (request !== adminScRequest) return;
+    document.getElementById('music-status').textContent = 'SoundCloud đã tải — bấm ▶ trong khung để nghe nếu chưa tự phát.';
+    // Lệnh này có thể bị trình duyệt chặn: người dùng vẫn có thể bấm trong iframe.
+    try { widget.play(); } catch (e) {}
+  });
+  widget.bind(window.SC.Widget.Events.PLAY, () => {
+    if (request === adminScRequest) document.getElementById('music-status').textContent = 'SoundCloud đang phát ♪';
+  });
+  widget.bind(window.SC.Widget.Events.ERROR, () => {
+    if (request === adminScRequest) document.getElementById('music-status').textContent = 'SoundCloud không tải được bài này. Kiểm tra link công khai và quyền nhúng.';
+  });
 }
 
 function playMusic() {
@@ -517,6 +553,7 @@ function playMusic() {
     return;
   }
 
+  adminScRequest++; adminScWidget = null;
   musicUrl = url;
   musicRevision++;
   broadcast({ type: 'music', url: musicUrl, revision: musicRevision });
@@ -546,11 +583,13 @@ function playMusic() {
   frame.style.display = 'block';
   // YouTube / SoundCloud: hiện player để trình duyệt cho phép tiếng
   frame.src = p.embed;
+  if (p.type === 'sc') setupAdminSc(frame, adminScRequest);
   const label = p.type === 'yt' ? 'YouTube' : p.type === 'sc' ? 'SoundCloud' : 'Nhạc';
   document.getElementById('music-status').textContent = 'Đang phát: ' + label + ' (bật tiếng trên player nếu bị tắt)';
 }
 
 function stopMusic() {
+  adminScRequest++; adminScWidget = null;
   musicUrl = '';
   musicRevision++;
   broadcast({ type: 'music-stop', revision: musicRevision });
