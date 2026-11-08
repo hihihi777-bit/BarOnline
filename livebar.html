@@ -1,2639 +1,1621 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="vi">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="referrer" content="no-referrer" />
-    <meta
-      name="viewport"
-      content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"
-    />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="theme-color" content="#05030a" />
-    <title>DJ Bar Live — Sân khấu</title>
-    <style>
-      html,
-      body {
-        width: 100%;
-        height: 100%;
-        margin: 0;
-        padding: 0;
-        overflow: hidden;
-        background: #05030a;
-        font-family:
-          system-ui,
-          -apple-system,
-          BlinkMacSystemFont,
-          sans-serif;
-        touch-action: none;
-        -webkit-user-select: none;
-        user-select: none;
-        position: fixed;
-        inset: 0;
-      }
-      * {
-        box-sizing: border-box;
-        -webkit-tap-highlight-color: transparent;
-      }
-      #c {
-        position: fixed;
-        inset: 0;
-        width: 100%;
-        height: 100%;
-        display: block;
-        z-index: 1;
-      }
-
-      /* ===== JOIN ===== */
-      #join-screen {
-        position: fixed;
-        inset: 0;
-        z-index: 100;
-        background: radial-gradient(
-          ellipse at 50% 0%,
-          #24103a 0%,
-          #0a0614 55%,
-          #05030a 100%
-        );
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        padding: 24px 20px;
-        padding-top: max(24px, env(safe-area-inset-top));
-        padding-bottom: max(24px, env(safe-area-inset-bottom));
-      }
-      #join-screen.hidden {
-        display: none;
-      }
-      #join-screen h1 {
-        font-size: clamp(26px, 8vw, 34px);
-        margin: 0 0 8px;
-        text-align: center;
-        font-weight: 800;
-        background: linear-gradient(90deg, #ff66cc, #b14dff, #00e0ff);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-      }
-      #join-screen .sub {
-        color: rgba(255, 255, 255, 0.55);
-        font-size: clamp(13px, 3.5vw, 15px);
-        text-align: center;
-        margin: 0 0 28px;
-        line-height: 1.55;
-        max-width: 320px;
-      }
-      #join-screen .field {
-        width: min(320px, 100%);
-        margin-bottom: 12px;
-      }
-      #join-screen label {
-        display: block;
-        font-size: 11px;
-        color: rgba(255, 255, 255, 0.4);
-        text-transform: uppercase;
-        letter-spacing: 0.6px;
-        margin-bottom: 8px;
-        text-align: center;
-      }
-      #join-screen input {
-        width: 100%;
-        padding: 16px 12px;
-        border-radius: 14px;
-        border: 2px solid rgba(180, 80, 255, 0.45);
-        background: rgba(0, 0, 0, 0.45);
-        color: #fff;
-        font-size: 24px;
-        font-weight: 800;
-        letter-spacing: 8px;
-        text-align: center;
-        outline: none;
-        text-transform: uppercase;
-        font-family: ui-monospace, SFMono-Regular, monospace;
-        -webkit-appearance: none;
-        appearance: none;
-      }
-      #join-screen input:focus {
-        border-color: #00e0ff;
-        box-shadow: 0 0 0 3px rgba(0, 224, 255, 0.15);
-      }
-      #join-screen .btn {
-        width: min(320px, 100%);
-        padding: 16px;
-        border: none;
-        border-radius: 14px;
-        font-size: 16px;
-        font-weight: 700;
-        cursor: pointer;
-        color: #fff;
-        background: linear-gradient(135deg, #b14dff, #ff2a6d);
-        box-shadow: 0 8px 24px rgba(180, 50, 255, 0.35);
-        margin-top: 4px;
-        min-height: 52px;
-      }
-      #join-screen .btn:disabled {
-        opacity: 0.55;
-      }
-      #join-screen .msg {
-        margin-top: 14px;
-        font-size: 13px;
-        color: #ff6b8a;
-        min-height: 20px;
-        text-align: center;
-        padding: 0 12px;
-      }
-      #join-screen .hint {
-        margin-top: 22px;
-        font-size: 12px;
-        color: rgba(255, 255, 255, 0.35);
-        text-align: center;
-        line-height: 1.55;
-      }
-      #join-screen .hint a {
-        color: #00e0ff;
-        text-decoration: none;
-      }
-
-      /* ===== STAGE HUD ===== */
-      #stage-ui {
-        position: fixed;
-        inset: 0;
-        z-index: 10;
-        pointer-events: none;
-        display: none;
-      }
-      #stage-ui.show {
-        display: block;
-      }
-
-      #led-wrap {
-        position: absolute;
-        left: 50%;
-        transform: translateX(-50%);
-        top: max(8px, env(safe-area-inset-top));
-        width: min(96vw, 640px);
-        max-width: calc(100% - 12px);
-        background: rgba(8, 4, 18, 0.9);
-        border: 2px solid #ff66cc;
-        box-shadow: 0 0 18px rgba(255, 100, 200, 0.4);
-        border-radius: 10px;
-        overflow: hidden;
-        padding: 7px 0;
-      }
-      #led-track {
-        display: flex;
-        white-space: nowrap;
-        animation: marquee 14s linear infinite;
-        will-change: transform;
-      }
-      #led-track span {
-        font-size: clamp(12px, 3.6vw, 18px);
-        font-weight: 800;
-        letter-spacing: 2px;
-        color: #ff66cc;
-        text-shadow:
-          0 0 8px #ff66cc,
-          0 0 14px #ff2a6d;
-        padding: 0 28px;
-        font-family: ui-monospace, monospace;
-      }
-      @keyframes marquee {
-        0% {
-          transform: translateX(0);
-        }
-        100% {
-          transform: translateX(-50%);
-        }
-      }
-
-      #hud {
-        position: absolute;
-        left: 50%;
-        transform: translateX(-50%);
-        bottom: max(10px, env(safe-area-inset-bottom));
-        background: rgba(0, 0, 0, 0.6);
-        padding: 6px 14px;
-        border-radius: 16px;
-        font-size: 12px;
-        color: rgba(255, 255, 255, 0.75);
-        border: 1px solid rgba(180, 80, 255, 0.35);
-        white-space: nowrap;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        pointer-events: auto;
-      }
-      #hud strong {
-        color: #ff66cc;
-      }
-      #btn-sound {
-        pointer-events: auto;
-        border: none;
-        border-radius: 12px;
-        padding: 6px 10px;
-        font-size: 11px;
-        font-weight: 700;
-        cursor: pointer;
-        color: #fff;
-        background: linear-gradient(135deg, #00e0ff, #0080ff);
-      }
-      #btn-music {
-        pointer-events: auto;
-        border: 0;
-        border-radius: 12px;
-        padding: 6px 10px;
-        font-size: 11px;
-        font-weight: 700;
-        color: #fff;
-        background: #8b42cc;
-        cursor: pointer;
-      }
-      #btn-sound.on {
-        background: linear-gradient(135deg, #00ffa8, #00aa66);
-      }
-      #speech-status {
-        position: absolute;
-        left: 50%;
-        transform: translateX(-50%);
-        bottom: max(48px, calc(env(safe-area-inset-bottom) + 40px));
-        font-size: 11px;
-        color: rgba(255, 255, 255, 0.55);
-        background: rgba(0, 0, 0, 0.45);
-        padding: 4px 10px;
-        border-radius: 10px;
-        max-width: 90vw;
-        text-align: center;
-        pointer-events: none;
-        display: none;
-      }
-      #speech-status.show {
-        display: block;
-      }
-
-      #conn {
-        position: absolute;
-        top: max(52px, calc(env(safe-area-inset-top) + 44px));
-        right: max(8px, env(safe-area-inset-right));
-        font-size: 11px;
-        color: rgba(255, 255, 255, 0.4);
-        background: rgba(0, 0, 0, 0.45);
-        padding: 4px 9px;
-        border-radius: 10px;
-      }
-      #conn.on {
-        color: #00ffa8;
-      }
-
-      #join-toast {
-        position: absolute;
-        top: 45%;
-        left: 50%;
-        transform: translate(-50%, -50%) scale(0.9);
-        background: rgba(10, 5, 22, 0.95);
-        border: 2px solid #00e0ff;
-        box-shadow: 0 0 28px rgba(0, 220, 255, 0.4);
-        padding: 14px 20px;
-        border-radius: 14px;
-        opacity: 0;
-        transition:
-          opacity 0.28s,
-          transform 0.28s;
-        text-align: center;
-        width: min(82vw, 280px);
-      }
-      #join-toast.show {
-        opacity: 1;
-        transform: translate(-50%, -50%) scale(1);
-      }
-      #join-toast .jt-label {
-        font-size: 10px;
-        color: rgba(255, 255, 255, 0.45);
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        margin-bottom: 4px;
-      }
-      #join-toast .jt-name {
-        font-size: clamp(18px, 5.5vw, 26px);
-        font-weight: 800;
-        background: linear-gradient(90deg, #ff66cc, #00e0ff);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        word-break: break-word;
-      }
-      #join-toast .jt-sub {
-        font-size: 12px;
-        color: #00ffa8;
-        margin-top: 5px;
-      }
-
-      /* Landscape tweaks */
-      @media (orientation: landscape) and (max-height: 500px) {
-        #led-wrap {
-          padding: 4px 0;
-          top: max(4px, env(safe-area-inset-top));
-        }
-        #led-track span {
-          font-size: 12px;
-          padding: 0 20px;
-        }
-        #hud {
-          bottom: max(6px, env(safe-area-inset-bottom));
-          font-size: 11px;
-          padding: 4px 10px;
-        }
-        #conn {
-          top: max(36px, calc(env(safe-area-inset-top) + 30px));
-          font-size: 10px;
-        }
-        #join-toast {
-          padding: 10px 16px;
-        }
-      }
-    </style>
-  </head>
-  <body>
-    <canvas id="c"></canvas>
-
-    <div id="join-screen">
-      <h1>DJ Bar Live</h1>
-      <p class="sub">
-        Nhập mã phòng từ máy Admin<br />để xem sân nhảy trên điện thoại
-      </p>
-      <div class="field">
-        <label>Mã phòng</label>
-        <input
-          id="room-input"
-          maxlength="6"
-          placeholder="ABC123"
-          autocomplete="off"
-          enterkeyhint="go"
-          inputmode="text"
-          autocapitalize="characters"
-        />
-      </div>
-      <button class="btn" id="btn-join">Vào sân khấu</button>
-      <div class="msg" id="join-msg"></div>
-      <p class="hint">
-        Mã phòng hiện trên trang Điều khiển (máy tính).<br />Admin:
-        <a href="dj-bar-login.html">Đăng nhập</a>
-      </p>
-    </div>
-
-    <div id="stage-ui">
-      <div id="led-wrap" style="display: none">
-        <div id="led-track">
-          <span id="led1">♪ FUNK PULSE · </span
-          ><span id="led2">♪ FUNK PULSE · </span>
-        </div>
-      </div>
-      <div id="hud">
-        Đang quẩy: <strong id="cnt">0</strong>
-        <button type="button" id="btn-sound">Bật tiếng 🔊</button
-        ><button type="button" id="btn-music">Bật nhạc ▶</button>
-      </div>
-      <div id="speech-status"></div>
-      <div
-        id="stage-music"
-        aria-hidden="true"
-        style="
-          position: absolute;
-          left: -9999px;
-          top: -9999px;
-          width: 320px;
-          height: 150px;
-          overflow: hidden;
-          pointer-events: none;
-          visibility: hidden;
-        "
-      >
-        <div
-          id="stage-music-label"
-          style="color: #fff; font-size: 12px; margin-bottom: 5px"
-        >
-          Nhạc sân khấu
-        </div>
-        <audio
-          id="stage-audio"
-          controls
-          playsinline
-          style="width: 100%; display: none"
-        ></audio>
-        <iframe
-          id="stage-frame"
-          title="Trình phát nhạc"
-          allow="autoplay; encrypted-media; picture-in-picture"
-          referrerpolicy="strict-origin-when-cross-origin"
-          style="width: 100%; height: 120px; border: 0; display: none"
-        ></iframe>
-      </div>
-      <div id="conn">○ Chưa kết nối</div>
-      <div id="join-toast">
-        <div class="jt-label">Thông báo</div>
-        <div class="jt-name" id="jt-name">—</div>
-        <div class="jt-sub">đã vào sàn quẩy!</div>
-      </div>
-    </div>
-
-    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
-    <script type="importmap">
-      {
-        "imports": {
-          "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
-        }
-      }
-    </script>
-    <script type="module">
-      import * as THREE from "three";
-
-      const isMobile =
-        /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) ||
-        (navigator.maxTouchPoints > 0 && innerWidth < 900);
-      const MAX_VISUAL = isMobile ? 36 : 60;
-      const MAX_TOTAL = 1000;
-      const DPR = Math.min(devicePixelRatio, isMobile ? 1.5 : 2);
-
-      const canvas = document.getElementById("c");
-      let renderer, scene, camera, clock;
-      let dancers = [];
-      let allNames = [];
-      let nameFrames = {};
-      let knownNames = new Set();
-      let discoBall,
-        neonMeshes = [],
-        spotLights = [],
-        floorTiles = [],
-        discoSpots = [];
-      let discoRays = [];
-      let dj = null,
-        deckL,
-        deckR,
-        centerGlow;
-      let djLedRings = [],
-        djLedDots = [],
-        djConsoleLights = [];
-      let djOperator = null;
-      const djPlatformHeight = 1.65; // Dùng chung trong dựng sân khấu và vòng lặp hoạt ảnh
-      let djSign = null,
-        djSignCanvas = null,
-        djSignTexture = null,
-        ceilingBeams = [],
-        floorBeams = [];
-      let clubFloorTiles = [],
-        wallBars = [];
-      let djPortalRings = [],
-        djEqualizerBars = [];
-      let wallSongCanvas = null,
-        wallSongTexture = null,
-        wallSongTitle = "FUNK PULSE",
-        lastWallSongFrame = -1;
-      let joinQueue = [],
-        joinShowing = false;
-      let entranceQueue = [],
-        activeEntrance = null;
-      let entryBurstTimer = null,
-        entryBurstNames = [],
-        entryBurstNoZoomUntil = 0;
-      let guestDjName = "",
-        guestDjTravel = null;
-      let cameraHome = null;
-      const entranceCameraTarget = new THREE.Vector3();
-      let conn = null,
-        peer = null,
-        started = false;
-
-      const COLORS = [
-        "#ff66aa",
-        "#66ccff",
-        "#ffcc44",
-        "#aaff66",
-        "#ff8866",
-        "#cc88ff",
-        "#66ffcc",
-        "#ff6688",
-        "#88aaff",
-        "#ffaa66",
-        "#66ffaa",
-        "#ff66cc",
-        "#ffffff",
-        "#00e0ff",
-      ];
-
-      function vw() {
-        return window.visualViewport ? visualViewport.width : innerWidth;
-      }
-      function vh() {
-        return window.visualViewport ? visualViewport.height : innerHeight;
-      }
-
-      function setConnUI(text, on) {
-        const el = document.getElementById("conn");
-        el.textContent = (on ? "● " : "○ ") + text;
-        el.className = on ? "on" : "";
-      }
-
-      function showStageUI() {
-        document.getElementById("join-screen").classList.add("hidden");
-        document.getElementById("stage-ui").classList.add("show");
-      }
-
-      function fitCamera() {
-        if (!camera) return;
-        const w = vw(),
-          h = vh();
-        const aspect = w / h;
-        camera.aspect = aspect;
-        // Portrait: kéo camera ra xa + cao hơn để thấy cả sàn
-        if (aspect < 0.85) {
-          camera.fov = 60;
-          camera.position.set(0, 5.7, 16.2);
-        } else if (aspect < 1.2) {
-          camera.fov = 55;
-          camera.position.set(0, 5.6, 15.1);
-        } else {
-          // Landscape phone
-          camera.fov = 50;
-          camera.position.set(0, 5.3, 13.8);
-        }
-        camera.updateProjectionMatrix();
-        camera.lookAt(0, 2.0, -2.5);
-        cameraHome = camera.position.clone();
-      }
-
-      function onResize() {
-        if (!renderer || !camera) return;
-        const w = vw(),
-          h = vh();
-        renderer.setSize(w, h, false);
-        canvas.style.width = w + "px";
-        canvas.style.height = h + "px";
-        fitCamera();
-      }
-
-      function initScene() {
-        scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x0a0618);
-        scene.fog = new THREE.Fog(
-          0x0a0618,
-          isMobile ? 14 : 16,
-          isMobile ? 32 : 36,
-        );
-
-        camera = new THREE.PerspectiveCamera(52, vw() / vh(), 0.1, 50);
-
-        renderer = new THREE.WebGLRenderer({
-          canvas,
-          antialias: !isMobile,
-          powerPreference: "high-performance",
-          alpha: false,
-        });
-        renderer.setPixelRatio(DPR);
-        renderer.setSize(vw(), vh(), false);
-
-        clock = new THREE.Clock();
-
-        scene.add(new THREE.AmbientLight(0x3a2860, 0.75));
-        const f1 = new THREE.PointLight(0xff4a8a, 0.8, 20);
-        f1.position.set(-4, 5, 3);
-        scene.add(f1);
-        const f2 = new THREE.PointLight(0x40e8ff, 0.65, 20);
-        f2.position.set(4, 5, 3);
-        scene.add(f2);
-
-        // Floor
-        const floor = new THREE.Mesh(
-          new THREE.CircleGeometry(7.0, isMobile ? 32 : 48),
-          new THREE.MeshStandardMaterial({
-            color: 0x2a1a48,
-            metalness: 0.5,
-            roughness: 0.35,
-          }),
-        );
-        floor.rotation.x = -Math.PI / 2;
-        scene.add(floor);
-
-        centerGlow = null; // Không dùng vòng sáng giữa sàn.
-
-        const tileColors = [0xd060ff, 0x3a7bff, 0xff77bb, 0x20ddff];
-        const ringCount = isMobile ? 3 : 4;
-        for (let r = 0; r < ringCount; r++) {
-          const count = isMobile ? 6 + r * 4 : 8 + r * 5;
-          for (let i = 0; i < count; i++) {
-            const a = (i / count) * Math.PI * 2;
-            const rad = 1.15 + r * 1.35;
-            const tile = new THREE.Mesh(
-              new THREE.CircleGeometry(0.48, 6),
-              new THREE.MeshBasicMaterial({
-                color: tileColors[(i + r) % 4],
-                transparent: true,
-                opacity: 0.85,
-              }),
-            );
-            tile.rotation.x = -Math.PI / 2;
-            tile.position.set(Math.cos(a) * rad, 0.03, Math.sin(a) * rad);
-            scene.add(tile);
-            floorTiles.push({ mesh: tile, phase: i + r * 3 });
-          }
-        }
-
-        const ring = new THREE.Mesh(
-          new THREE.TorusGeometry(6.8, 0.09, 6, 40),
-          new THREE.MeshBasicMaterial({ color: 0xff66cc }),
-        );
-        ring.rotation.x = Math.PI / 2;
-        ring.position.y = 0.05;
-        scene.add(ring);
-        neonMeshes.push({ mesh: ring, color: new THREE.Color(0xff66cc) });
-
-        const wallMat = new THREE.MeshStandardMaterial({ color: 0x16102a });
-        const backWall = new THREE.Mesh(
-          new THREE.PlaneGeometry(18, 7.5),
-          wallMat,
-        );
-        backWall.position.set(0, 3.7, -7.2);
-        scene.add(backWall);
-        // Màn LED tên bài hát đặt cao trên đỉnh cổng LED, không che DJ.
-        wallSongCanvas = document.createElement("canvas");
-        wallSongCanvas.width = 1024;
-        wallSongCanvas.height = 160;
-        wallSongTexture = new THREE.CanvasTexture(wallSongCanvas);
-        wallSongTexture.colorSpace = THREE.SRGBColorSpace;
-        const wallSongMesh = new THREE.Mesh(
-          new THREE.PlaneGeometry(9.8, 0.92),
-          new THREE.MeshBasicMaterial({
-            map: wallSongTexture,
-            transparent: false,
-            side: THREE.DoubleSide,
-          }),
-        );
-        wallSongMesh.position.set(0, 5.42, -6.91);
-        scene.add(wallSongMesh);
-        // Cổng LED 3D phía sau DJ: các vòng đa giác lùi sâu về phía tường.
-        // Giữ phần chữ tên bài hát ở phía trước, không bị LED che.
-        const portalColors = [0xff39b8, 0x00eaff, 0xa96aff, 0xffd65c];
-        const portalLayers = isMobile ? 5 : 7;
-        for (let i = 0; i < portalLayers; i++) {
-          const w = 4.95 - i * 0.43;
-          const h = 4.25 - i * 0.34;
-          const depth = -6.98 - i * 0.025;
-          const points = [
-            new THREE.Vector3(-w / 2, 2.65 - h / 2, depth),
-            new THREE.Vector3(-w / 2, 2.65 + h / 2 - 0.5, depth),
-            new THREE.Vector3(-w / 2 + 0.55, 2.65 + h / 2, depth),
-            new THREE.Vector3(w / 2 - 0.55, 2.65 + h / 2, depth),
-            new THREE.Vector3(w / 2, 2.65 + h / 2 - 0.5, depth),
-            new THREE.Vector3(w / 2, 2.65 - h / 2, depth),
-          ];
-          const geom = new THREE.BufferGeometry().setFromPoints(points);
-          const material = new THREE.LineBasicMaterial({
-            color: portalColors[i % portalColors.length],
-            transparent: true,
-            opacity: 0.65,
-          });
-          const line = new THREE.Line(geom, material);
-          scene.add(line);
-          djPortalRings.push({ mesh: line, phase: i * 0.65 });
-        }
-        // Hai cụm Equalizer LED ở hai bên cổng, thay đổi độ cao theo nhịp.
-        const eqCount = isMobile ? 8 : 12;
-        for (const side of [-1, 1]) {
-          for (let i = 0; i < eqCount; i++) {
-            const x = side * (3.12 + i * 0.25);
-            const height = 0.48;
-            const bar = new THREE.Mesh(
-              new THREE.BoxGeometry(0.145, height, 0.07),
-              new THREE.MeshBasicMaterial({
-                color: portalColors[(i + (side === 1 ? 1 : 0)) % 4],
-              }),
-            );
-            bar.position.set(x, 1.98, -7.015);
-            scene.add(bar);
-            djEqualizerBars.push({
-              mesh: bar,
-              phase: i * 0.72 + (side === 1 ? 2.4 : 0),
-              base: 1.7,
-            });
-          }
-        }
-        const leftWall = new THREE.Mesh(
-          new THREE.PlaneGeometry(14, 7.5),
-          wallMat,
-        );
-        leftWall.rotation.y = Math.PI / 2;
-        leftWall.position.set(-9, 3.7, 0);
-        scene.add(leftWall);
-        const rightWall = leftWall.clone();
-        rightWall.position.x = 9;
-        rightWall.rotation.y = -Math.PI / 2;
-        scene.add(rightWall);
-
-        function panel(x, y, z, w, h, color) {
-          const p = new THREE.Mesh(
-            new THREE.PlaneGeometry(w, h),
-            new THREE.MeshBasicMaterial({
-              color,
-              transparent: true,
-              opacity: 0.7,
-            }),
-          );
-          p.position.set(x, y, z);
-          scene.add(p);
-          neonMeshes.push({ mesh: p, color: new THREE.Color(color) });
-        }
-        panel(-4, 3.5, -7.1, 3, 0.85, 0xff2a6d);
-        panel(4, 3.5, -7.1, 3, 0.85, 0x00e0ff);
-        panel(0, 2.7, -7.1, 5, 0.55, 0xb14dff);
-
-        const ceil = new THREE.Mesh(
-          new THREE.PlaneGeometry(18, 14),
-          new THREE.MeshStandardMaterial({ color: 0x0e0a18 }),
-        );
-        ceil.rotation.x = Math.PI / 2;
-        ceil.position.y = 7.6;
-        scene.add(ceil);
-
-        const spotN = isMobile ? 8 : 12;
-        for (let i = 0; i < spotN; i++) {
-          const x = -5.8 + i * (11.6 / (spotN - 1));
-          const lens = new THREE.Mesh(
-            new THREE.SphereGeometry(0.18, 6, 6),
-            new THREE.MeshBasicMaterial({ color: 0xffcc44 }),
-          );
-          lens.position.set(x, 7.2, -1.2);
-          scene.add(lens);
-          const spot = new THREE.PointLight(
-            0xffcc66,
-            isMobile ? 0.28 : 0.52,
-            11,
-          );
-          spot.position.set(x, 6.8, -0.3);
-          scene.add(spot);
-          spotLights.push({ light: spot, lens, phase: i * 0.4 });
-        }
-
-        // Đèn laser sợi mảnh bố trí đều dọc hai mép tường, chiếu xiên vào tâm sàn.
-        // Dùng mesh giả ánh sáng để không gây tải nặng trên điện thoại.
-        const beamColors = [
-          0x00eaff, 0xff38aa, 0x9b68ff, 0xffce55, 0x34ffbc, 0xff6a92,
-        ];
-        const beamCount = isMobile ? 8 : 12; // 6 tia mỗi bên trên máy tính, 4 tia mỗi bên trên điện thoại
-        for (let i = 0; i < beamCount; i++) {
-          const side = i % 2 === 0 ? -1 : 1;
-          const perWall = beamCount / 2;
-          const wallIndex = Math.floor(i / 2);
-          const x = side * 7.45;
-          const z = -5.7 + wallIndex * (10.5 / Math.max(1, perWall - 1));
-          const y = 7.12; // gắn sát mép trên của hai tường
-          const targetX = side * (0.25 + (wallIndex % 3) * 0.4);
-          const targetZ = Math.max(
-            -4.0,
-            Math.min(4.8, z * 0.48 + ((wallIndex % 3) - 1) * 0.75),
-          );
-          const color = beamColors[i % beamColors.length];
-          const startPoint = new THREE.Vector3(x, y, z);
-          const endPoint = new THREE.Vector3(targetX, 0.1, targetZ);
-          const vector = new THREE.Vector3().subVectors(endPoint, startPoint);
-          const beam = new THREE.Mesh(
-            new THREE.CylinderGeometry(
-              0.012,
-              0.045,
-              vector.length(),
-              6,
-              1,
-              true,
-            ),
-            new THREE.MeshBasicMaterial({
-              color,
-              transparent: true,
-              opacity: 0.28,
-              depthWrite: false,
-              side: THREE.DoubleSide,
-              blending: THREE.AdditiveBlending,
-            }),
-          );
-          beam.position.copy(startPoint).add(endPoint).multiplyScalar(0.5);
-          beam.quaternion.setFromUnitVectors(
-            new THREE.Vector3(0, 1, 0),
-            vector.clone().normalize(),
-          );
-          scene.add(beam);
-          const glow = new THREE.Mesh(
-            new THREE.CircleGeometry(0.17, 12),
-            new THREE.MeshBasicMaterial({
-              color,
-              transparent: true,
-              opacity: 0.23,
-              depthWrite: false,
-              blending: THREE.AdditiveBlending,
-            }),
-          );
-          glow.rotation.x = -Math.PI / 2;
-          glow.position.copy(endPoint);
-          glow.position.y = 0.065;
-          scene.add(glow);
-          const fixture = new THREE.Mesh(
-            new THREE.BoxGeometry(0.24, 0.22, 0.3),
-            new THREE.MeshStandardMaterial({
-              color: 0x151521,
-              metalness: 0.6,
-              roughness: 0.3,
-            }),
-          );
-          fixture.position.copy(startPoint);
-          scene.add(fixture);
-          const lens = new THREE.Mesh(
-            new THREE.CircleGeometry(0.085, 10),
-            new THREE.MeshBasicMaterial({ color }),
-          );
-          lens.position.set(x - side * 0.15, y, z + 0.08);
-          lens.rotation.y = (side * Math.PI) / 2;
-          scene.add(lens);
-          ceilingBeams.push({
-            beam,
-            glow,
-            fixture,
-            lens,
-            phase: i * 0.8,
-            angle: i * 1.1,
-            x,
-            y,
-            z,
-            targetX,
-            targetZ,
-            side,
-          });
-        }
-        // Chỉ giữ các ô LED lục giác trên mặt sàn; bỏ toàn bộ ô kim cương.
-        // Viền sàn 3 lớp, phân tách rõ sân khấu với khu vực xung quanh.
-        [5.95, 6.36, 6.72].forEach((r, i) => {
-          const line = new THREE.Mesh(
-            new THREE.TorusGeometry(r, 0.028 + i * 0.007, 5, 72),
-            new THREE.MeshBasicMaterial({
-              color: [0x00eaff, 0xff4fae, 0xa66cff][i],
-              transparent: true,
-              opacity: 0.7,
-            }),
-          );
-          line.rotation.x = Math.PI / 2;
-          line.position.y = 0.055 + i * 0.007;
-          scene.add(line);
-          neonMeshes.push({
-            mesh: line,
-            color: new THREE.Color([0x00eaff, 0xff4fae, 0xa66cff][i]),
-          });
-        });
-        // Các thanh LED chạy dọc tường hai bên để tạo chiều sâu club.
-        for (const side of [-1, 1])
-          for (let i = 0; i < 5; i++) {
-            const bar = new THREE.Mesh(
-              new THREE.BoxGeometry(0.09, 2.4, 0.1),
-              new THREE.MeshBasicMaterial({
-                color: i % 2 ? 0x00eaff : 0xff4aa8,
-                transparent: true,
-                opacity: 0.52,
-              }),
-            );
-            bar.position.set(side * 8.87, 2.5, -5 + i * 2.4);
-            scene.add(bar);
-            wallBars.push({ mesh: bar, phase: i * 0.9 + side });
-          }
-
-        // Quả cầu disco nhiều mảnh gương thật, thay cho khối đa diện thô.
-        discoBall = new THREE.Group();
-        const ballRadius = 0.57;
-        const core = new THREE.Mesh(
-          new THREE.SphereGeometry(
-            ballRadius * 0.97,
-            isMobile ? 20 : 32,
-            isMobile ? 14 : 24,
-          ),
-          new THREE.MeshStandardMaterial({
-            color: 0x25283b,
-            metalness: 0.88,
-            roughness: 0.22,
-          }),
-        );
-        discoBall.add(core);
-        const rows = isMobile ? 17 : 24;
-        const tileSize = isMobile ? 0.084 : 0.062;
-        const tileGeometry = new THREE.PlaneGeometry(tileSize, tileSize);
-        const tileMaterial = new THREE.MeshStandardMaterial({
-          color: 0xe9f4ff,
-          metalness: 0.96,
-          roughness: 0.085,
-          side: THREE.DoubleSide,
-          emissive: 0x182238,
-          emissiveIntensity: 0.28,
-        });
-        const tiles = [];
-        for (let row = 1; row < rows; row++) {
-          const theta = (Math.PI * row) / rows;
-          const n = Math.max(
-            8,
-            Math.round(
-              (2 * Math.PI * ballRadius * Math.sin(theta)) / (tileSize * 1.1),
-            ),
-          );
-          for (let col = 0; col < n; col++) {
-            const phi = (2 * Math.PI * (col + (row % 2) * 0.5)) / n;
-            const normal = new THREE.Vector3(
-              Math.sin(theta) * Math.cos(phi),
-              Math.cos(theta),
-              Math.sin(theta) * Math.sin(phi),
-            );
-            tiles.push(normal);
-          }
-        }
-        const mirrorTiles = new THREE.InstancedMesh(
-          tileGeometry,
-          tileMaterial,
-          tiles.length,
-        );
-        const tileDummy = new THREE.Object3D();
-        const silver = new THREE.Color(0xdceaff),
-          white = new THREE.Color(0xffffff),
-          blue = new THREE.Color(0x9bc5ff);
-        tiles.forEach((normal, i) => {
-          tileDummy.position.copy(normal).multiplyScalar(ballRadius + 0.005);
-          tileDummy.quaternion.setFromUnitVectors(
-            new THREE.Vector3(0, 0, 1),
-            normal,
-          );
-          tileDummy.updateMatrix();
-          mirrorTiles.setMatrixAt(i, tileDummy.matrix);
-          mirrorTiles.setColorAt(
-            i,
-            i % 9 === 0 ? blue : i % 4 === 0 ? white : silver,
-          );
-        });
-        mirrorTiles.instanceMatrix.needsUpdate = true;
-        discoBall.add(mirrorTiles);
-        const cap = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.095, 0.11, 0.075, 12),
-          new THREE.MeshStandardMaterial({
-            color: 0xbccbdc,
-            metalness: 0.9,
-            roughness: 0.18,
-          }),
-        );
-        cap.position.y = ballRadius + 0.035;
-        discoBall.add(cap);
-        // Trục treo và móc nối lên trần.
-        const cable = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.012, 0.012, 0.85, 6),
-          new THREE.MeshStandardMaterial({
-            color: 0x8796aa,
-            metalness: 0.8,
-            roughness: 0.3,
-          }),
-        );
-        cable.position.set(0, 6.4 + ballRadius + 0.48, 0);
-        scene.add(cable);
-        const sparkleLight = new THREE.PointLight(
-          0xd8ecff,
-          isMobile ? 0.8 : 1.3,
-          4.8,
-        );
-        sparkleLight.position.set(0, 0.1, 0);
-        discoBall.add(sparkleLight);
-        discoBall.position.set(0, 6.4, 0);
-        scene.add(discoBall);
-        // Các tia phản chiếu tỏa từ quả cầu đến sàn và tường.
-        // Dùng vật liệu cộng sáng nhẹ để tạo cảm giác ánh gương trong sương.
-        const rayCount = isMobile ? 5 : 8;
-        const rayOrigin = new THREE.Vector3(0, 6.4, 0);
-        for (let i = 0; i < rayCount; i++) {
-          const hue = [0xd9edff, 0xa6dcff, 0xffbce9, 0xffffff][i % 4];
-          const mat = new THREE.MeshBasicMaterial({
-            color: hue,
-            transparent: true,
-            opacity: 0.045,
-            depthWrite: false,
-            side: THREE.DoubleSide,
-            blending: THREE.AdditiveBlending,
-          });
-          const ray = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.003, 0.035, 1, 5, 1, true),
-            mat,
-          );
-          scene.add(ray);
-          const spot = new THREE.Mesh(
-            new THREE.CircleGeometry(isMobile ? 0.12 : 0.16, 12),
-            new THREE.MeshBasicMaterial({
-              color: hue,
-              transparent: true,
-              opacity: 0.22,
-              depthWrite: false,
-              side: THREE.DoubleSide,
-              blending: THREE.AdditiveBlending,
-            }),
-          );
-          spot.rotation.x = -Math.PI / 2;
-          scene.add(spot);
-          discoRays.push({
-            ray,
-            spot,
-            phase: (i * Math.PI * 2) / rayCount,
-            origin: rayOrigin.clone(),
-          });
-        }
-
-        const dcols = isMobile
-          ? [0xff2a6d, 0x00e0ff, 0xb14dff, 0xff9f1a]
-          : [0xff2a6d, 0x00e0ff, 0xb14dff, 0x00ffa8, 0xff9f1a];
-        dcols.forEach((c, i) => {
-          const l = new THREE.PointLight(c, 0.65, 10);
-          scene.add(l);
-          discoSpots.push({
-            light: l,
-            angle: (i / dcols.length) * Math.PI * 2,
-          });
-        });
-
-        function speaker(x, z) {
-          const body = new THREE.Mesh(
-            new THREE.BoxGeometry(1.0, 1.7, 0.7),
-            new THREE.MeshStandardMaterial({ color: 0x1a1a22, metalness: 0.4 }),
-          );
-          body.position.set(x, 0.85, z);
-          scene.add(body);
-          const strip = new THREE.Mesh(
-            new THREE.BoxGeometry(0.06, 1.5, 0.06),
-            new THREE.MeshBasicMaterial({ color: 0xff66cc }),
-          );
-          strip.position.set(x + (x > 0 ? -0.35 : 0.35), 0.85, z + 0.2);
-          scene.add(strip);
-          neonMeshes.push({ mesh: strip, color: new THREE.Color(0xff66cc) });
-        }
-        speaker(-7.2, -2);
-        speaker(7.2, -2);
-        if (!isMobile) {
-          speaker(-7.2, 3.2);
-          speaker(7.2, 3.2);
-        }
-
-        // Bục DJ riêng cao 0.68m, đặt cuối sàn nhảy và hướng về người xem.
-        // Chiều cao bục DJ dùng biến chung djPlatformHeight.
-        const platformMat = new THREE.MeshStandardMaterial({
-          color: 0x171326,
-          metalness: 0.52,
-          roughness: 0.42,
-        });
-        const platform = new THREE.Mesh(
-          new THREE.BoxGeometry(5.6, djPlatformHeight, 3.0),
-          platformMat,
-        );
-        platform.position.set(0, djPlatformHeight / 2, -6.05);
-        scene.add(platform);
-        const topDeck = new THREE.Mesh(
-          new THREE.BoxGeometry(5.65, 0.075, 3.05),
-          new THREE.MeshStandardMaterial({
-            color: 0x28213f,
-            metalness: 0.56,
-            roughness: 0.32,
-          }),
-        );
-        topDeck.position.set(0, djPlatformHeight + 0.03, -6.05);
-        scene.add(topDeck);
-        // Viền neon ở cạnh trước và hai cạnh bên bục.
-        const edgeMat = new THREE.MeshBasicMaterial({ color: 0xff66cc });
-        const frontEdge = new THREE.Mesh(
-          new THREE.BoxGeometry(5.65, 0.065, 0.07),
-          edgeMat,
-        );
-        frontEdge.position.set(0, djPlatformHeight + 0.065, -4.52);
-        scene.add(frontEdge);
-        neonMeshes.push({ mesh: frontEdge, color: new THREE.Color(0xff66cc) });
-        for (const side of [-1, 1]) {
-          const edge = new THREE.Mesh(
-            new THREE.BoxGeometry(0.065, 0.065, 3.0),
-            new THREE.MeshBasicMaterial({ color: 0x00eaff }),
-          );
-          edge.position.set(side * 2.81, djPlatformHeight + 0.065, -6.05);
-          scene.add(edge);
-          neonMeshes.push({ mesh: edge, color: new THREE.Color(0x00eaff) });
-          // Cột đèn hai góc trước, giúp nhận ra độ cao của bục.
-          const post = new THREE.Mesh(
-            new THREE.BoxGeometry(0.12, djPlatformHeight, 0.12),
-            new THREE.MeshBasicMaterial({ color: 0x8a3c9e }),
-          );
-          post.position.set(side * 2.77, djPlatformHeight / 2, -4.53);
-          scene.add(post);
-        }
-        // Bậc lên bục ở cạnh bên phải, không chắn mặt trước bàn DJ.
-        for (let i = 0; i < 2; i++) {
-          const stair = new THREE.Mesh(
-            new THREE.BoxGeometry(0.78, 0.23 * (i + 1), 0.68),
-            platformMat,
-          );
-          stair.position.set(3.12 + i * 0.67, 0.115 * (i + 1), -5.85);
-          scene.add(stair);
-        }
-        const booth = new THREE.Mesh(
-          new THREE.BoxGeometry(3.2, 1.5, 1.25),
-          new THREE.MeshStandardMaterial({ color: 0x221a38, metalness: 0.4 }),
-        );
-        booth.position.set(0, 0.75 + djPlatformHeight, -6.1);
-        scene.add(booth);
-        const boothTop = new THREE.Mesh(
-          new THREE.BoxGeometry(3.3, 0.08, 1.3),
-          new THREE.MeshStandardMaterial({ color: 0x2e2450, metalness: 0.5 }),
-        );
-        boothTop.position.set(0, 1.55 + djPlatformHeight, -6.1);
-        scene.add(boothTop);
-
-        function deck(x) {
-          const d = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.32, 0.32, 0.06, 16),
-            new THREE.MeshStandardMaterial({ color: 0x2a2a38, metalness: 0.7 }),
-          );
-          d.position.set(x, 1.64 + djPlatformHeight, -6.1);
-          scene.add(d);
-          return d;
-        }
-        deckL = deck(-0.85);
-        deckR = deck(0.85);
-        // Hai mâm đĩa LED nhiều vòng sáng, quay nổi bật ở phía trên bàn DJ.
-        const ledColors = [0xff4ac8, 0x00eaff, 0xffd64d];
-        for (const cx of [-0.85, 0.85]) {
-          for (let j = 0; j < 3; j++) {
-            const radius = 0.21 + j * 0.065;
-            const ring = new THREE.Mesh(
-              new THREE.TorusGeometry(
-                radius,
-                0.012 + j * 0.002,
-                5,
-                isMobile ? 24 : 40,
-              ),
-              new THREE.MeshBasicMaterial({
-                color: ledColors[j],
-                transparent: true,
-                opacity: 0.94,
-              }),
-            );
-            ring.rotation.x = Math.PI / 2;
-            ring.position.set(cx, 1.7 + djPlatformHeight + j * 0.004, -6.1);
-            scene.add(ring);
-            djLedRings.push({ mesh: ring, phase: j * 1.5 + cx });
-          }
-          const hub = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.065, 0.065, 0.025, 16),
-            new THREE.MeshBasicMaterial({ color: 0xffffff }),
-          );
-          hub.position.set(cx, 1.72 + djPlatformHeight, -6.1);
-          scene.add(hub);
-          for (let k = 0; k < 12; k++) {
-            const a = (k * Math.PI) / 6;
-            const dot = new THREE.Mesh(
-              new THREE.SphereGeometry(0.023, 5, 4),
-              new THREE.MeshBasicMaterial({ color: ledColors[k % 3] }),
-            );
-            dot.position.set(
-              cx + Math.cos(a) * 0.39,
-              1.7 + djPlatformHeight,
-              -6.1 + Math.sin(a) * 0.39,
-            );
-            scene.add(dot);
-            djLedDots.push({ mesh: dot, phase: k * 0.6 + cx });
-          }
-        }
-        // Mixer LED trung tâm, thanh sáng và dãy nút điều khiển.
-        const mixer = new THREE.Mesh(
-          new THREE.BoxGeometry(0.45, 0.09, 0.75),
-          new THREE.MeshStandardMaterial({
-            color: 0x090b18,
-            metalness: 0.55,
-            roughness: 0.24,
-          }),
-        );
-        mixer.position.set(0, 1.66 + djPlatformHeight, -6.1);
-        scene.add(mixer);
-        for (let k = 0; k < 7; k++) {
-          const color = k % 2 ? 0x00eaff : 0xff66cc;
-          const light = new THREE.Mesh(
-            new THREE.BoxGeometry(0.035, 0.025, 0.11),
-            new THREE.MeshBasicMaterial({ color }),
-          );
-          light.position.set(-0.15 + k * 0.05, 1.725 + djPlatformHeight, -6.12);
-          scene.add(light);
-          djConsoleLights.push({ mesh: light, phase: k * 0.75 });
-        }
-
-        const boothNeon = new THREE.Mesh(
-          new THREE.BoxGeometry(2.9, 0.05, 0.05),
-          new THREE.MeshBasicMaterial({ color: 0x00e0ff }),
-        );
-        boothNeon.position.set(0, 1.6 + djPlatformHeight, -5.45);
-        scene.add(boothNeon);
-        neonMeshes.push({ mesh: boothNeon, color: new THREE.Color(0x00e0ff) });
-
-        // Biển chữ LED trên mặt trước bàn DJ, cập nhật trực tiếp từ Admin.
-        djSignCanvas = document.createElement("canvas");
-        djSignCanvas.width = 1024;
-        djSignCanvas.height = 256;
-        djSignTexture = new THREE.CanvasTexture(djSignCanvas);
-        djSignTexture.colorSpace = THREE.SRGBColorSpace;
-        djSign = new THREE.Mesh(
-          new THREE.PlaneGeometry(2.9, 1.03),
-          new THREE.MeshBasicMaterial({
-            map: djSignTexture,
-            transparent: true,
-            side: THREE.DoubleSide,
-          }),
-        );
-        djSign.position.set(0, 0.78 + djPlatformHeight, -5.463);
-        // Khôi phục bảng chữ trên mặt trước bàn DJ, độc lập với chữ bài hát chạy trên tường.
-        djSign.visible = true;
-        scene.add(djSign);
-        setDjLabel("DJ BAR LIVE");
-
-        // Một DJ duy nhất nhảy trên sân khấu, không thêm nhân vật trùng lặp.
-        // DJ biểu diễn nhảy sung phía sau bàn LED.
-        djOperator = new THREE.Group();
-        const operatorJacket = new THREE.MeshStandardMaterial({
-          color: 0x11142a,
-          metalness: 0.25,
-          roughness: 0.5,
-        });
-        const operatorSkin = new THREE.MeshStandardMaterial({
-          color: 0xffc8a5,
-          roughness: 0.65,
-        });
-        const operatorPink = new THREE.MeshBasicMaterial({ color: 0xff42bf });
-        const opTorso = new THREE.Mesh(
-          new THREE.CapsuleGeometry(0.32, 0.6, 5, 10),
-          operatorJacket,
-        );
-        opTorso.position.y = 0.85;
-        djOperator.add(opTorso);
-        const opHead = new THREE.Mesh(
-          new THREE.SphereGeometry(0.24, 12, 9),
-          operatorSkin,
-        );
-        opHead.position.y = 1.6;
-        djOperator.add(opHead);
-        const opHair = new THREE.Mesh(
-          new THREE.SphereGeometry(0.255, 12, 8),
-          new THREE.MeshStandardMaterial({ color: 0x09091a }),
-        );
-        opHair.position.set(0, 1.71, -0.025);
-        opHair.scale.y = 0.56;
-        djOperator.add(opHair);
-        const headphones = new THREE.Mesh(
-          new THREE.TorusGeometry(0.255, 0.037, 6, 20, Math.PI),
-          operatorPink,
-        );
-        headphones.rotation.z = Math.PI;
-        headphones.position.set(0, 1.65, 0);
-        djOperator.add(headphones);
-        for (const side of [-1, 1]) {
-          const leg = new THREE.Mesh(
-            new THREE.CapsuleGeometry(0.115, 0.45, 3, 7),
-            operatorJacket,
-          );
-          leg.position.set(side * 0.18, 0.3, 0);
-          djOperator.add(leg);
-          const arm = new THREE.Group();
-          arm.position.set(side * 0.32, 1.12, 0.1);
-          const sleeve = new THREE.Mesh(
-            new THREE.CapsuleGeometry(0.09, 0.48, 4, 8),
-            operatorJacket,
-          );
-          sleeve.position.set(side * 0.17, -0.2, 0.31);
-          sleeve.rotation.z = side * 0.46;
-          sleeve.rotation.x = -0.55;
-          arm.add(sleeve);
-          const hand = new THREE.Mesh(
-            new THREE.SphereGeometry(0.095, 8, 6),
-            operatorSkin,
-          );
-          hand.position.set(side * 0.34, -0.35, 0.62);
-          arm.add(hand);
-          djOperator.add(arm);
-          djOperator.userData[side < 0 ? "leftArm" : "rightArm"] = arm;
-        }
-        const operatorLogo = new THREE.Mesh(
-          new THREE.BoxGeometry(0.4, 0.055, 0.045),
-          operatorPink,
-        );
-        operatorLogo.position.set(0, 1.08, 0.32);
-        djOperator.add(operatorLogo);
-        // Bàn che chân DJ tự nhiên, phần thân/đầu nhô rõ phía trên hai đĩa.
-        djOperator.position.set(0, djPlatformHeight + 1.12, -6.78);
-        djOperator.scale.setScalar(1.18);
-        scene.add(djOperator);
-
-        fitCamera();
-        window.addEventListener("resize", onResize);
-        window.addEventListener("orientationchange", () =>
-          setTimeout(onResize, 150),
-        );
-        if (window.visualViewport) {
-          visualViewport.addEventListener("resize", onResize);
-          visualViewport.addEventListener("scroll", onResize);
-        }
-        animate();
-      }
-
-      function createChar(colorHex, isDJ = false) {
-        const g = new THREE.Group();
-        const skin = 0xffd5b0;
-        const col = new THREE.Color(colorHex);
-        const segs = isMobile ? 5 : 8;
-        const legM = new THREE.MeshStandardMaterial({ color: 0x222233 });
-        const legL = new THREE.Mesh(
-          new THREE.CapsuleGeometry(0.08, 0.24, 2, segs),
-          legM,
-        );
-        legL.position.set(-0.1, 0.26, 0);
-        g.add(legL);
-        const legR = new THREE.Mesh(
-          new THREE.CapsuleGeometry(0.08, 0.24, 2, segs),
-          legM,
-        );
-        legR.position.set(0.1, 0.26, 0);
-        g.add(legR);
-        const body = new THREE.Mesh(
-          new THREE.CapsuleGeometry(isDJ ? 0.25 : 0.22, 0.4, 3, segs),
-          new THREE.MeshStandardMaterial({
-            color: col,
-            roughness: 0.5,
-            metalness: 0.12,
-          }),
-        );
-        body.position.y = 0.8;
-        g.add(body);
-        const head = new THREE.Mesh(
-          new THREE.SphereGeometry(0.2, segs, segs),
-          new THREE.MeshStandardMaterial({ color: skin, roughness: 0.6 }),
-        );
-        head.position.y = 1.32;
-        g.add(head);
-        const hair = new THREE.Mesh(
-          new THREE.SphereGeometry(0.22, segs, segs),
-          new THREE.MeshStandardMaterial({
-            color: isDJ ? 0x1a0a08 : 0x2a1a10,
-            roughness: 0.85,
-          }),
-        );
-        hair.position.y = 1.42;
-        hair.scale.set(1.05, 0.6, 1.05);
-        g.add(hair);
-        const am = new THREE.MeshStandardMaterial({ color: skin });
-        const armL = new THREE.Mesh(
-          new THREE.CapsuleGeometry(0.05, 0.28, 2, segs),
-          am,
-        );
-        armL.position.set(-0.3, 0.85, 0);
-        armL.rotation.z = 0.25;
-        g.add(armL);
-        const armR = new THREE.Mesh(
-          new THREE.CapsuleGeometry(0.05, 0.28, 2, segs),
-          am,
-        );
-        armR.position.set(0.3, 0.85, 0);
-        armR.rotation.z = -0.25;
-        g.add(armR);
-        g.userData = { armL, armR, legL, legR, body, phase: Math.random() * 6 };
-        return g;
-      }
-
-      function makeLabel(text, frame = "none") {
-        const cv = document.createElement("canvas");
-        cv.width = 512;
-        cv.height = 128;
-        const ctx = cv.getContext("2d");
-        const themes = {
-          gold: ["#ffcf54", "#fff0a0", "#8d5200", "♛"],
-          neon: ["#ff4dbd", "#ffc2ed", "#710b69", "★"],
-          ice: ["#55eaff", "#d7ffff", "#0c5980", "◆"],
-          fire: ["#ff713b", "#ffe08c", "#98221a", "✦"],
-          galaxy: ["#a56cff", "#f1b9ff", "#4e2299", "✧"],
-        };
-        const theme = themes[frame],
-          display = String(text).slice(0, 22);
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        if (theme) {
-          const grad = ctx.createLinearGradient(0, 0, 512, 128);
-          grad.addColorStop(0, theme[0]);
-          grad.addColorStop(0.5, theme[1]);
-          grad.addColorStop(1, theme[2]);
-          ctx.shadowColor = theme[0];
-          ctx.shadowBlur = 19;
-          ctx.fillStyle = "rgba(7,9,26,0.93)";
-          ctx.beginPath();
-          ctx.roundRect(14, 14, 484, 100, 25);
-          ctx.fill();
-          ctx.strokeStyle = grad;
-          ctx.lineWidth = 7;
-          ctx.stroke();
-          ctx.shadowBlur = 0;
-          ctx.fillStyle = theme[1];
-          ctx.font = "bold 34px system-ui,sans-serif";
-          ctx.fillText(theme[3] + " " + display + " " + theme[3], 256, 65, 450);
-        } else {
-          ctx.font = "bold 39px system-ui,sans-serif";
-          ctx.lineWidth = 5;
-          ctx.strokeStyle = "rgba(0,0,0,0.75)";
-          ctx.strokeText(display, 256, 65, 475);
-          ctx.fillStyle = "#ffffff";
-          ctx.fillText(display, 256, 65, 475);
-        }
-        const tex = new THREE.CanvasTexture(cv);
-        tex.minFilter = THREE.LinearFilter;
-        const spr = new THREE.Sprite(
-          new THREE.SpriteMaterial({
-            map: tex,
-            transparent: true,
-            depthTest: false,
-          }),
-        );
-        spr.scale.set(theme ? 2.05 : 1.65, theme ? 0.51 : 0.41, 1);
-        spr.position.y = 1.85;
-        spr.userData.labelTexture = tex;
-        return spr;
-      }
-      function updateNameplates() {
-        dancers.forEach((d) => {
-          const frame = nameFrames[d.name.toLowerCase()] || "none";
-          if (d.frame === frame) return;
-          const old = d.label;
-          if (old) {
-            d.avatar.remove(old);
-            old.material.map.dispose();
-            old.material.dispose();
-          }
-          d.label = makeLabel(d.name, frame);
-          d.avatar.add(d.label);
-          d.frame = frame;
-        });
-      }
-
-      function layoutVisual() {
-        const n = dancers.length;
-        if (!n) return;
-        const rings = n <= 12 ? 1 : n <= 28 ? 2 : 3;
-        let idx = 0;
-        for (let r = 0; r < rings && idx < n; r++) {
-          const inRing = Math.ceil((n - idx) / (rings - r));
-          const radius = 1.9 + r * 1.55;
-          for (let i = 0; i < inRing && idx < n; i++, idx++) {
-            const a = (i / inRing) * Math.PI * 2 - Math.PI / 2;
-            const d = dancers[idx];
-            d.mesh.position.x = Math.cos(a) * radius;
-            d.mesh.position.z = Math.sin(a) * radius;
-            d.mesh.rotation.y = a + Math.PI;
-            d.targetX = d.mesh.position.x;
-            d.targetZ = d.mesh.position.z;
-            if (d.entering) d.mesh.position.set(d.startX, 0, d.startZ);
-            if (
-              d.name.toLowerCase() === guestDjName.toLowerCase() &&
-              !guestDjTravel
-            )
-              d.mesh.position.set(2.0, djPlatformHeight, -6.85);
-          }
-        }
-      }
-
-      function rebuildVisual() {
-        const previous = new Map(dancers.map((d) => [d.name.toLowerCase(), d]));
-        const next = [];
-        allNames.slice(-MAX_VISUAL).forEach((name, i) => {
-          let d = previous.get(name.toLowerCase());
-          if (!d) {
-            const mesh = new THREE.Group();
-            const avatar = createChar(COLORS[i % COLORS.length]);
-            const label = makeLabel(
-              name,
-              nameFrames[name.toLowerCase()] || "none",
-            );
-            avatar.add(label);
-            mesh.add(avatar);
-            scene.add(mesh);
-            d = {
-              mesh,
-              avatar,
-              name,
-              label,
-              frame: nameFrames[name.toLowerCase()] || "none",
-            };
-          }
-          next.push(d);
-          previous.delete(name.toLowerCase());
-        });
-        previous.forEach((d) => scene.remove(d.mesh));
-        dancers = next;
-        updateNameplates();
-        layoutVisual();
-        if (
-          guestDjName &&
-          !dancers.some(
-            (d) => d.name.toLowerCase() === guestDjName.toLowerCase(),
-          )
-        )
-          setGuestDj("");
-        document.getElementById("cnt").textContent = allNames.length;
-      }
-
-      let speechReady = false;
-      let cachedVoices = [];
-      let speakChain = Promise.resolve();
-      let ttsAudio = null;
-
-      // Sửa lỗi Chrome: speech bị pause giữa chừng
-      setInterval(() => {
-        try {
-          if (
-            window.speechSynthesis &&
-            window.speechSynthesis.speaking &&
-            window.speechSynthesis.paused
-          ) {
-            window.speechSynthesis.resume();
-          }
-        } catch (e) {}
-      }, 200);
-
-      function setSpeechStatus(msg) {
-        const el = document.getElementById("speech-status");
-        if (!el) return;
-        if (!msg) {
-          el.classList.remove("show");
-          el.textContent = "";
-          return;
-        }
-        el.textContent = msg;
-        el.classList.add("show");
-      }
-
-      function refreshVoices() {
-        try {
-          cachedVoices = window.speechSynthesis
-            ? window.speechSynthesis.getVoices() || []
-            : [];
-        } catch (e) {
-          cachedVoices = [];
-        }
-        return cachedVoices;
-      }
-
-      function pickVietnameseVoice() {
-        const voices = refreshVoices();
-        if (!voices.length) return null;
-        const score = (v) => {
-          const lang = (v.lang || "").toLowerCase();
-          const name = (v.name || "").toLowerCase();
-          let s = 0;
-          if (lang === "vi-vn") s += 200;
-          if (lang.startsWith("vi")) s += 150;
-          if (/vietnamese|vietnam|tiếng việt|tieng viet/.test(name)) s += 120;
-          if (/google/.test(name) && lang.startsWith("vi")) s += 90;
-          return s;
-        };
-        const ranked = voices
-          .map((v) => ({ v, s: score(v) }))
-          .filter((x) => x.s > 0)
-          .sort((a, b) => b.s - a.s);
-        return ranked.length ? ranked[0].v : null;
-      }
-
-      function unlockSpeech() {
-        speechReady = true;
-        refreshVoices();
-        try {
-          const AC = window.AudioContext || window.webkitAudioContext;
-          if (AC) {
-            if (!window.__djAudioCtx) window.__djAudioCtx = new AC();
-            if (window.__djAudioCtx.state === "suspended")
-              window.__djAudioCtx.resume();
-          }
-        } catch (e) {}
-        try {
-          if (!ttsAudio) ttsAudio = new Audio();
-          ttsAudio.playsInline = true;
-          // beep ngắn để unlock audio element
-          ttsAudio.src =
-            "data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdH2Onp6ahYB2bF1ihZSgoJ6TgXFlX2F/kp+enJGAdGphYX6PnZyYjX5xZmBijJienJmOf3JpY2KKmp2bmY5/cmlkYomXm5qZjn5xaWRiiJebmpmNfnFpZGKIl5uamY1+cWlkYg==";
-          ttsAudio.volume = 0.3;
-          ttsAudio.play().catch(() => {});
-        } catch (e) {}
-      }
-
-      // ---------- Chuẩn hoá chữ trước khi đọc ----------
-      function cleanForSpeech(str) {
-        let t = String(str || "").normalize("NFC"); // gộp dấu: "e" + "̂" → "ê" (bàn phím iPhone hay tách dấu)
-        t = t
-          .replace(/[_]+/g, " ")
-          .replace(/[^\p{L}\p{M}\p{N}\s.,'’-]/gu, " ") // bỏ emoji / ký tự lạ làm TTS đọc sai
-          .replace(/\s+/g, " ")
-          .trim();
-        return t;
-      }
-      function speakableName(name) {
-        let t = cleanForSpeech(name);
-        // Tên VIẾT HOA toàn bộ dễ bị đọc từng chữ cái → đổi sang chữ thường
-        if (t.length > 3 && t === t.toLocaleUpperCase("vi"))
-          t = t.toLocaleLowerCase("vi");
-        return t;
-      }
-
-      function playChime() {
-        try {
-          const AC = window.AudioContext || window.webkitAudioContext;
-          if (!AC) return;
-          if (!window.__djAudioCtx) window.__djAudioCtx = new AC();
-          const ctx = window.__djAudioCtx;
-          if (ctx.state === "suspended") ctx.resume();
-          const t0 = ctx.currentTime;
-          [660, 880, 1100].forEach((f, i) => {
-            const o = ctx.createOscillator(),
-              g = ctx.createGain(),
-              t = t0 + i * 0.13;
-            o.type = "sine";
-            o.frequency.value = f;
-            g.gain.setValueAtTime(0.0001, t);
-            g.gain.exponentialRampToValueAtTime(0.3, t + 0.02);
-            g.gain.exponentialRampToValueAtTime(0.0001, t + 0.28);
-            o.connect(g);
-            g.connect(ctx.destination);
-            o.start(t);
-            o.stop(t + 0.32);
-          });
-        } catch (e) {}
-      }
-
-      // Google Translate không cho phép fetch từ localhost (CORS).
-      // Không fetch/cố giải mã URL bên thứ ba; dùng SpeechSynthesis nội bộ trước.
-      // ---------- 1) Giọng Google tiếng Việt (có dấu) ----------
-      function playGoogleUrl(url) {
-        return new Promise((resolve) => {
-          try {
-            if (!ttsAudio) ttsAudio = new Audio();
-            ttsAudio.playsInline = true;
-            try {
-              ttsAudio.pause();
-            } catch (e) {}
-            let finished = false,
-              started = false,
-              t1,
-              t2;
-            const done = (ok) => {
-              if (finished) return;
-              finished = true;
-              clearTimeout(t1);
-              clearTimeout(t2);
-              resolve(ok);
-            };
-            ttsAudio.onplaying = () => {
-              started = true;
-            };
-            ttsAudio.onended = () => done(true);
-            ttsAudio.onerror = () => done(false);
-            ttsAudio.src = url;
-            ttsAudio.volume = 1;
-            const p = ttsAudio.play();
-            if (p && p.catch)
-              p.catch((err) => {
-                console.warn("google tts", err);
-                done(false);
-              });
-            t1 = setTimeout(() => {
-              if (!started) done(false);
-            }, 4500); // không phát được → thử cách khác
-            t2 = setTimeout(() => done(started), 15000);
-          } catch (e) {
-            resolve(false);
-          }
-        });
-      }
-      async function speakWithGoogle(text) {
-        const q = encodeURIComponent(text.normalize("NFC").slice(0, 180));
-        const urls = [
-          "https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=vi&q=" +
-            q,
-          "https://translate.google.com.vn/translate_tts?ie=UTF-8&client=tw-ob&tl=vi&q=" +
-            q,
-          "https://translate.googleapis.com/translate_tts?ie=UTF-8&client=gtx&tl=vi&q=" +
-            q,
-        ];
-        for (const u of urls) {
-          if (await playGoogleUrl(u)) return true;
-        }
-        return false;
-      }
-
-      // ---------- VoiceRSS (có khóa miễn phí, rất ổn định, có tiếng Việt) ----------
-      let ttsKey = "";
-      try {
-        ttsKey = localStorage.getItem("djbar_tts_key") || "";
-      } catch (e) {}
-      function setTtsKey(k) {
-        k = String(k || "").trim();
-        if (k === ttsKey) return;
-        ttsKey = k;
-        try {
-          localStorage.setItem("djbar_tts_key", k);
-        } catch (e) {}
-      }
-      async function speakWithVoiceRss(text) {
-        if (!ttsKey) return false;
-        const url =
-          "https://api.voicerss.org/?key=" +
-          encodeURIComponent(ttsKey) +
-          "&hl=vi-vn&c=MP3&f=24khz_16bit_mono&src=" +
-          encodeURIComponent(text.normalize("NFC").slice(0, 300));
-        return playGoogleUrl(url);
-      }
-
-      // ---------- 2) Giọng của máy — CHỈ khi máy có giọng tiếng Việt thật ----------
-      // (giọng tiếng Anh đọc "đã vào sàn nhảy" sẽ sai dấu/sai âm nên không dùng)
-      const keepUtts = [];
-      function speakWithSynth(text) {
-        return new Promise((resolve) => {
-          const synth = window.speechSynthesis;
-          const voices = refreshVoices();
-          const voice = pickVietnameseVoice();
-          // Có danh sách giọng mà không có giọng Việt → bỏ (giọng Anh đọc sai).
-          // Danh sách rỗng (Android/iOS hay vậy) → vẫn thử với lang vi-VN.
-          if (!synth || (!voice && voices.length)) {
-            resolve(false);
-            return;
-          }
-          let started = false,
-            finished = false,
-            t1,
-            t2;
-          const done = (ok) => {
-            if (finished) return;
-            finished = true;
-            clearTimeout(t1);
-            clearTimeout(t2);
-            resolve(ok);
-          };
-          const go = () => {
-            try {
-              if (synth.paused) synth.resume();
-              const u = new SpeechSynthesisUtterance(text);
-              if (voice) u.voice = voice;
-              u.lang = (voice && voice.lang) || "vi-VN";
-              u.rate = 0.86;
-              u.pitch = 1;
-              u.volume = 1;
-              keepUtts.push(u);
-              if (keepUtts.length > 20) keepUtts.shift();
-              u.onstart = () => {
-                started = true;
-              };
-              u.onend = () => done(true);
-              u.onerror = (ev) => {
-                console.warn("synth", ev && ev.error);
-                done(false);
-              };
-              synth.speak(u);
-              t1 = setTimeout(() => {
-                if (!started) {
-                  try {
-                    synth.cancel();
-                  } catch (e) {}
-                  done(false);
-                }
-              }, 3000);
-              t2 = setTimeout(() => done(started), 12000);
-            } catch (e) {
-              done(false);
-            }
-          };
-          if (synth.speaking || synth.pending) {
-            try {
-              synth.cancel();
-            } catch (e) {}
-            setTimeout(go, 120);
-          } else go();
-        });
-      }
-
-      // ---------- Hàng đợi đọc: lần lượt từng câu, không đọc đè ----------
-      let vnChain = Promise.resolve();
-      function speakVietnamese(text) {
-        const say = String(text || "")
-          .normalize("NFC")
-          .trim();
-        if (!say) return Promise.resolve(false);
-        const p = vnChain
-          .then(async () => {
-            duckStageMusic(true);
-            setSpeechStatus("Đang đọc: " + say);
-            let ok = false;
-            if (ttsKey) ok = await speakWithVoiceRss(say);
-            if (!ok) ok = await speakWithSynth(say);
-            if (!ok) ok = await speakWithGoogle(say);
-            if (!ok) {
-              playChime();
-              setSpeechStatus(
-                ttsKey
-                  ? "Không đọc được: kiểm tra khóa VoiceRSS / mạng"
-                  : "Không đọc được tiếng Việt — nhờ Admin nhập khóa VoiceRSS (miễn phí) hoặc cài giọng Việt cho máy",
-              );
-              await new Promise((r) => setTimeout(r, 2500));
-            }
-            setTimeout(() => setSpeechStatus(""), 600);
-            await new Promise((r) => setTimeout(r, 200));
-            duckStageMusic(false);
-            return ok;
-          })
-          .catch((e) => {
-            duckStageMusic(false);
-            console.warn(e);
-            return false;
-          });
-        vnChain = p.then(() => {});
-        return p;
-      }
-
-      function speakJoin(name) {
-        const n = speakableName(name);
-        if (!n) return;
-        speakVietnamese(n + " đã vào sàn nhảy");
-      }
-
-      function showJoinToast(name) {
-        const n = String(name || "").trim();
-        if (!n) return;
-        joinQueue.push(n);
-        scheduleEntrance(n);
-        processJoinQueue();
-      }
-
-      // Gom khách vào gần nhau thành một lượt: 1 người thì đón bằng camera,
-      // từ 2 người trở lên thì vào ngay toàn sàn, không zoom và không xếp hàng.
-      function scheduleEntrance(name) {
-        const now = performance.now();
-        if (now < entryBurstNoZoomUntil) {
-          const d = dancers.find(
-            (d) => d.name.toLowerCase() === name.toLowerCase(),
-          );
-          if (d) {
-            d.entering = false;
-            d.mesh.position.set(d.targetX, 0, d.targetZ);
-          }
-          return;
-        }
-        entryBurstNames.push(name);
-        if (entryBurstTimer) clearTimeout(entryBurstTimer);
-        if (entryBurstNames.length >= 2) {
-          entryBurstNoZoomUntil = now + 2200;
-          entryBurstNames = [];
-          entryBurstTimer = null;
-          if (activeEntrance) {
-            const d = activeEntrance.d;
-            d.entering = false;
-            d.mesh.position.set(d.targetX, 0, d.targetZ);
-            activeEntrance = null;
-          }
-          entranceQueue.forEach((d) => {
-            d.entering = false;
-            d.mesh.position.set(d.targetX, 0, d.targetZ);
-          });
-          entranceQueue = [];
-          return;
-        }
-        entryBurstTimer = setTimeout(() => {
-          entryBurstTimer = null;
-          const arrivals = entryBurstNames.splice(0);
-          if (arrivals.length === 1) queueEntrance(arrivals[0]);
-        }, 1100);
-      }
-      // Đi từ lối vào ở phía trước camera tới vị trí đứng trên sàn.
-      function queueEntrance(name) {
-        const d = dancers.find(
-          (d) => d.name.toLowerCase() === name.toLowerCase(),
-        );
-        if (
-          !d ||
-          d.entering ||
-          entranceQueue.includes(d) ||
-          activeEntrance?.d === d
-        )
-          return;
-        d.entering = true;
-        d.startX = Math.max(-2.1, Math.min(2.1, d.targetX));
-        d.startZ = 10.6;
-        d.mesh.position.set(d.startX, 0, d.startZ);
-        entranceQueue.push(d);
-      }
-      function setGuestDj(name) {
-        const next = String(name || "").trim();
-        if (
-          next &&
-          !dancers.some((d) => d.name.toLowerCase() === next.toLowerCase())
-        )
-          return;
-        if (guestDjName.toLowerCase() === next.toLowerCase()) return;
-        const old = dancers.find(
-          (d) => d.name.toLowerCase() === guestDjName.toLowerCase(),
-        );
-        if (old) {
-          guestDjTravel = {
-            d: old,
-            elapsed: 0,
-            returning: true,
-            start: old.mesh.position.clone(),
-          };
-        }
-        guestDjName = next;
-        if (next) {
-          const d = dancers.find(
-            (d) => d.name.toLowerCase() === next.toLowerCase(),
-          );
-          if (d) {
-            d.entering = false;
-            entranceQueue = entranceQueue.filter((x) => x !== d);
-            if (activeEntrance?.d === d) activeEntrance = null;
-            guestDjTravel = {
-              d,
-              elapsed: 0,
-              returning: false,
-              start: d.mesh.position.clone(),
-            };
-          }
-        }
-      }
-      function updateGuestDj(dt) {
-        if (!guestDjTravel) return;
-        const g = guestDjTravel,
-          d = g.d;
-        if (!dancers.includes(d)) {
-          guestDjTravel = null;
-          return;
-        }
-        g.elapsed += dt;
-        // Đi vòng qua cạnh phải bục DJ, bước lên sân khấu rồi đứng nhảy cạnh DJ.
-        const points = g.returning
-          ? [
-              g.start,
-              new THREE.Vector3(3.3, djPlatformHeight, -5.0),
-              new THREE.Vector3(3.3, 0, -4.1),
-              new THREE.Vector3(d.targetX, 0, d.targetZ),
-            ]
-          : [
-              g.start,
-              new THREE.Vector3(3.3, 0, -4.1),
-              new THREE.Vector3(3.3, djPlatformHeight, -5.0),
-              new THREE.Vector3(2.0, djPlatformHeight, -6.85),
-            ];
-        const progress = Math.min(1, g.elapsed / 4.5) * 3;
-        const i = Math.min(2, Math.floor(progress)),
-          alpha = progress - i;
-        d.mesh.position.copy(points[i]).lerp(points[i + 1], alpha);
-        d.mesh.rotation.y = Math.PI;
-        if (progress >= 3) {
-          guestDjTravel = null;
-          if (g.returning) d.mesh.position.set(d.targetX, 0, d.targetZ);
-        }
-      }
-      function updateEntrance(dt, t) {
-        if (!activeEntrance && entranceQueue.length) {
-          const d = entranceQueue.shift();
-          if (dancers.includes(d)) activeEntrance = { d, elapsed: 0 };
-        }
-        const a = activeEntrance;
-        if (!a) return;
-        if (!dancers.includes(a.d)) {
-          activeEntrance = null;
-          return;
-        }
-        a.elapsed += dt;
-        const walk = Math.min(1, a.elapsed / 3.4);
-        const smooth = walk * walk * (3 - 2 * walk);
-        const d = a.d;
-        d.mesh.position.x = d.startX + (d.targetX - d.startX) * smooth;
-        d.mesh.position.z = d.startZ + (d.targetZ - d.startZ) * smooth;
-        d.mesh.rotation.y = Math.PI;
-        if (a.elapsed >= 5.5) {
-          d.entering = false;
-          d.mesh.position.set(d.targetX, 0, d.targetZ);
-          activeEntrance = null;
-        }
-      }
-      function updateEntranceCamera(dt, t) {
-        if (!camera || !cameraHome) return;
-        const a =
-          performance.now() < entryBurstNoZoomUntil ? null : activeEntrance;
-        const home = cameraHome;
-        if (a) {
-          const d = a.d,
-            elapsed = a.elapsed;
-          const inWeight = Math.min(1, elapsed / 0.9);
-          const outWeight = Math.min(1, Math.max(0, (5.5 - elapsed) / 1.5));
-          const weight = inWeight * outWeight;
-          // Camera tiến nhẹ về nhân vật, tránh zoom quá sát trên màn hình dọc.
-          const follow = new THREE.Vector3(
-            d.mesh.position.x * 0.7,
-            3.5,
-            Math.min(15.5, d.mesh.position.z + 5.5),
-          );
-          const wanted = home.clone().lerp(follow, weight * 0.9);
-          camera.position.lerp(wanted, Math.min(1, dt * 5));
-          entranceCameraTarget.set(d.mesh.position.x, 1.15, d.mesh.position.z);
-          entranceCameraTarget.lerp(new THREE.Vector3(0, 2, -2.5), 1 - weight);
-          camera.lookAt(entranceCameraTarget);
-        } else {
-          camera.position.lerp(home, Math.min(1, dt * 3.5));
-          camera.lookAt(0, 2, -2.5);
-        }
-      }
-
-      function processJoinQueue() {
-        if (joinShowing || !joinQueue.length) return;
-        joinShowing = true;
-        const name = joinQueue.shift();
-        const nameEl = document.getElementById("jt-name");
-        if (nameEl) nameEl.textContent = name;
-        const el = document.getElementById("join-toast");
-        if (el) el.classList.add("show");
-        speakJoin(name);
-        setTimeout(() => {
-          if (el) el.classList.remove("show");
-          setTimeout(() => {
-            joinShowing = false;
-            processJoinQueue();
-          }, 300);
-        }, 3500);
-      }
-
-      // Nhạc nhận từ Admin. Mỗi trình duyệt tự phát âm thanh trên thiết bị của mình.
-      let currentMusicUrl = "";
-      let currentMusicRevision = -1;
-      function duckStageMusic(duck) {
-        // Tạm ngắt nhạc trong lúc đọc để tránh lấn giọng, sau đó khôi phục.
-        const audio = document.getElementById("stage-audio");
-        if (audio) audio.volume = duck ? 0.02 : 0.65;
-        const frame = document.getElementById("stage-frame");
-        if (frame && frame.src.includes("youtube.com/embed/")) {
-          try {
-            frame.contentWindow.postMessage(
-              JSON.stringify({
-                event: "command",
-                func: "setVolume",
-                args: [duck ? 2 : 65],
-              }),
-              "*",
-            );
-          } catch (e) {}
-        }
-      }
-
-      function parseStageMusic(url) {
-        try {
-          const u = new URL(url);
-          if (u.protocol !== "https:" && u.protocol !== "http:") return null;
-          const host = u.hostname.toLowerCase();
-          let id = "";
-          if (host === "youtu.be" || host === "www.youtu.be")
-            id = u.pathname.split("/")[1] || "";
-          else if (
-            [
-              "youtube.com",
-              "www.youtube.com",
-              "m.youtube.com",
-              "youtube-nocookie.com",
-              "www.youtube-nocookie.com",
-            ].includes(host)
-          ) {
-            if (u.pathname === "/watch") id = u.searchParams.get("v") || "";
-            else if (/^\/(embed|live|shorts)\//.test(u.pathname))
-              id = u.pathname.split("/")[2] || "";
-          }
-          if (/^[\w-]{11}$/.test(id))
-            return {
-              type: "iframe",
-              src:
-                "https://www.youtube.com/embed/" +
-                id +
-                "?autoplay=1&playsinline=1&enablejsapi=1&loop=1&playlist=" +
-                id,
-            };
-          if (host === "soundcloud.com" || host.endsWith(".soundcloud.com"))
-            return {
-              type: "iframe",
-              src:
-                "https://w.soundcloud.com/player/?url=" +
-                encodeURIComponent(u.href) +
-                "&auto_play=true",
-            };
-          if (/\.(mp3|ogg|wav|m4a)(?:$|\?)/i.test(u.pathname + u.search))
-            return { type: "audio", src: u.href };
-        } catch (e) {}
-        return null;
-      }
-      function stopStageMusic() {
-        const audio = document.getElementById("stage-audio");
-        const frame = document.getElementById("stage-frame");
-        audio.pause();
-        audio.removeAttribute("src");
-        audio.load();
-        frame.src = "about:blank";
-        audio.style.display = "none";
-        frame.style.display = "none";
-        document.getElementById("stage-music").style.display = "none";
-        document.getElementById("btn-music").textContent = "Bật nhạc ▶";
-      }
-      function setStageMusic(url, revision) {
-        if (revision !== undefined && revision < currentMusicRevision) return;
-        if (revision !== undefined) currentMusicRevision = revision;
-        if (url === currentMusicUrl) return;
-        currentMusicUrl = url || "";
-        stopStageMusic();
-        if (!currentMusicUrl) return;
-        const p = parseStageMusic(currentMusicUrl);
-        const box = document.getElementById("stage-music");
-        const label = document.getElementById("stage-music-label");
-        box.style.display = "block";
-        if (!p) {
-          label.textContent =
-            "Link chưa hỗ trợ. Dùng YouTube, SoundCloud hoặc URL MP3 trực tiếp.";
-          return;
-        }
-        label.textContent =
-          "Nhạc sân khấu — nếu chưa nghe thấy, bấm ▶ bên dưới";
-        if (p.type === "audio") {
-          const audio = document.getElementById("stage-audio");
-          audio.style.display = "block";
-          audio.src = p.src;
-          audio.loop = true;
-          audio.volume = 0.65;
-          audio
-            .play()
-            .then(() => {
-              document.getElementById("btn-music").textContent =
-                "Nhạc đang phát ♪";
-            })
-            .catch(() => {
-              label.textContent =
-                "Trình duyệt chặn tự phát — bấm Bật nhạc hoặc ▶";
-            });
-        } else {
-          const frame = document.getElementById("stage-frame");
-          frame.style.display = "block";
-          frame.src = p.src;
-          label.textContent =
-            "YouTube/SoundCloud: nếu bị chặn tự phát, bấm ▶ trong khung bên dưới";
-        }
-      }
-      document.getElementById("btn-music").addEventListener("click", () => {
-        const audio = document.getElementById("stage-audio");
-        if (audio.src && audio.style.display !== "none") {
-          audio
-            .play()
-            .then(() => {
-              document.getElementById("btn-music").textContent =
-                "Nhạc đang phát ♪";
-            })
-            .catch(() => {
-              document.getElementById("stage-music-label").textContent =
-                "Không phát được file. Kiểm tra link MP3/CORS.";
-            });
-        } else if (currentMusicUrl) {
-          // Làm mới iframe từ một thao tác người dùng; một số trình duyệt vẫn yêu cầu bấm ▶ trong player.
-          const p = parseStageMusic(currentMusicUrl);
-          if (p && p.type === "iframe")
-            document.getElementById("stage-frame").src = p.src;
-          document.getElementById("stage-music").style.display = "block";
-        }
-      });
-
-      function applyState(st) {
-        if (st.nameFrames && typeof st.nameFrames === "object") {
-          nameFrames = st.nameFrames;
-          updateNameplates();
-        }
-        if (typeof st.ttsKey === "string") setTtsKey(st.ttsKey);
-        if (st.song) setSong(st.song);
-        if (typeof st.djLabel === "string") setDjLabel(st.djLabel);
-        if (typeof st.musicUrl === "string")
-          setStageMusic(st.musicUrl, st.musicRevision);
-        if (Array.isArray(st.names)) {
-          const incoming = st.names
-            .map((n) => String(n).trim())
-            .filter(Boolean);
-          const newOnes = incoming.filter(
-            (n) => !knownNames.has(n.toLowerCase()),
-          );
-          allNames = incoming.slice(0, MAX_TOTAL);
-          knownNames = new Set(allNames.map((n) => n.toLowerCase()));
-          rebuildVisual();
-          newOnes.slice(-3).forEach((n) => showJoinToast(n));
-          if (typeof st.guestDjName === "string") setGuestDj(st.guestDjName);
-        }
-      }
-
-      function setDjLabel(value) {
-        if (!djSignCanvas || !djSignTexture) return;
-        const ctx = djSignCanvas.getContext("2d");
-        const text = String(value || "DJ BAR LIVE")
-          .trim()
-          .slice(0, 38);
-        ctx.clearRect(0, 0, 1024, 256);
-        ctx.fillStyle = "#100b25";
-        ctx.fillRect(0, 0, 1024, 256);
-        ctx.strokeStyle = "#00eaff";
-        ctx.lineWidth = 11;
-        ctx.strokeRect(8, 8, 1008, 240);
-        ctx.shadowColor = "#ff3ed1";
-        ctx.shadowBlur = 24;
-        ctx.fillStyle = "#fff2ff";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        let size = 112;
-        do {
-          ctx.font = "900 " + size + "px Arial, sans-serif";
-          size -= 4;
-        } while (ctx.measureText(text).width > 930 && size > 36);
-        ctx.fillText(text, 512, 132);
-        ctx.shadowBlur = 0;
-        djSignTexture.needsUpdate = true;
-      }
-
-      function setSong(title) {
-        const songTitle = (title || "FUNK PULSE").toUpperCase();
-        const text = "♪ " + songTitle + "  ·  ";
-        document.getElementById("led1").textContent = text;
-        document.getElementById("led2").textContent = text;
-        wallSongTitle = songTitle;
-      }
-
-      function handleMsg(data) {
-        if (!data || !data.type) return;
-        if (data.type === "config") setTtsKey(data.ttsKey);
-        if (data.type === "state") applyState(data);
-        if (data.type === "song") setSong(data.title);
-        if (data.type === "guest-dj") setGuestDj(data.name);
-        if (
-          data.type === "name-frames" &&
-          data.frames &&
-          typeof data.frames === "object"
-        ) {
-          nameFrames = data.frames;
-          updateNameplates();
-        }
-        if (data.type === "dj-label") setDjLabel(data.text);
-        if (data.type === "music") setStageMusic(data.url, data.revision);
-        if (data.type === "music-stop") setStageMusic("", data.revision);
-        if (data.type === "add") {
-          const name = (data.name || "").trim();
-          if (!name) return;
-          if (
-            !knownNames.has(name.toLowerCase()) &&
-            allNames.length < MAX_TOTAL
-          ) {
-            allNames.push(name);
-            knownNames.add(name.toLowerCase());
-            rebuildVisual();
-          }
-          showJoinToast(name);
-        }
-        if (data.type === "remove") {
-          const key = (data.name || "").toLowerCase();
-          allNames = allNames.filter((n) => n.toLowerCase() !== key);
-          knownNames.delete(key);
-          rebuildVisual();
-        }
-        if (data.type === "clear") {
-          allNames = [];
-          knownNames.clear();
-          guestDjName = "";
-          guestDjTravel = null;
-          rebuildVisual();
-        }
-      }
-
-      function connectRoom(code) {
-        code = (code || "")
-          .trim()
-          .toUpperCase()
-          .replace(/[^A-Z0-9]/g, "");
-        if (code.length < 4) {
-          document.getElementById("join-msg").textContent =
-            "Mã phòng không hợp lệ";
-          return;
-        }
-        document.getElementById("join-msg").textContent = "Đang kết nối...";
-        document.getElementById("btn-join").disabled = true;
-        document.getElementById("room-input").blur();
-
-        if (peer) {
-          try {
-            peer.destroy();
-          } catch (e) {}
-        }
-        peer = new Peer({
-          debug: 0,
-          config: {
-            iceServers: [
-              { urls: "stun:stun.l.google.com:19302" },
-              { urls: "stun:global.stun.twilio.com:3478" },
-            ],
-          },
-        });
-
-        const fail = (msg) => {
-          document.getElementById("join-msg").textContent =
-            msg || "Không kết nối được. Kiểm tra mã phòng.";
-          document.getElementById("btn-join").disabled = false;
-          setConnUI("Lỗi kết nối", false);
-        };
-
-        peer.on("open", () => {
-          conn = peer.connect("djbar-" + code, { reliable: true });
-          const timeout = setTimeout(
-            () => fail("Hết thời gian chờ. Kiểm tra mã / Admin còn mở không?"),
-            12000,
-          );
-
-          conn.on("open", () => {
-            clearTimeout(timeout);
-            showStageUI();
-            setConnUI("Đã kết nối", true);
-            if (!started) {
-              started = true;
-              initScene();
-            }
-            try {
-              conn.send({ type: "hello" });
-            } catch (e) {}
-            try {
-              localStorage.setItem("djbar_stage_room", code);
-            } catch (e) {}
-          });
-          conn.on("data", handleMsg);
-          conn.on("close", () => setConnUI("Mất kết nối", false));
-          conn.on("error", () => {
-            clearTimeout(timeout);
-            fail();
-          });
-        });
-
-        peer.on("error", (err) => {
-          console.warn(err);
-          fail("Lỗi mạng hoặc mã phòng sai");
-        });
-      }
-
-      document.getElementById("btn-join").onclick = () => {
-        unlockSpeech();
-        connectRoom(document.getElementById("room-input").value);
+<head>
+<meta charset="UTF-8"/>
+<meta name="referrer" content="no-referrer"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="theme-color" content="#05030a"/>
+<title>DJ Bar Live — Sân khấu</title>
+<style>
+html,body{
+  width:100%;height:100%;margin:0;padding:0;overflow:hidden;
+  background:#05030a;font-family:system-ui,-apple-system,BlinkMacSystemFont,sans-serif;
+  touch-action:none;-webkit-user-select:none;user-select:none;
+  position:fixed;inset:0;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+#c{position:fixed;inset:0;width:100%;height:100%;display:block;z-index:1}
+
+/* ===== JOIN ===== */
+#join-screen{
+  position:fixed;inset:0;z-index:100;
+  background:radial-gradient(ellipse at 50% 0%,#24103a 0%,#0a0614 55%,#05030a 100%);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:24px 20px;
+  padding-top:max(24px,env(safe-area-inset-top));
+  padding-bottom:max(24px,env(safe-area-inset-bottom));
+}
+#join-screen.hidden{display:none}
+#join-screen h1{
+  font-size:clamp(26px,8vw,34px);margin:0 0 8px;text-align:center;font-weight:800;
+  background:linear-gradient(90deg,#ff66cc,#b14dff,#00e0ff);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}
+#join-screen .sub{
+  color:rgba(255,255,255,.55);font-size:clamp(13px,3.5vw,15px);
+  text-align:center;margin:0 0 28px;line-height:1.55;max-width:320px;
+}
+#join-screen .field{width:min(320px,100%);margin-bottom:12px}
+#join-screen label{
+  display:block;font-size:11px;color:rgba(255,255,255,.4);
+  text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;text-align:center;
+}
+#join-screen input{
+  width:100%;padding:16px 12px;border-radius:14px;
+  border:2px solid rgba(180,80,255,.45);
+  background:rgba(0,0,0,.45);color:#fff;
+  font-size:24px;font-weight:800;letter-spacing:8px;
+  text-align:center;outline:none;text-transform:uppercase;
+  font-family:ui-monospace,SFMono-Regular,monospace;
+  -webkit-appearance:none;appearance:none;
+}
+#join-screen input:focus{border-color:#00e0ff;box-shadow:0 0 0 3px rgba(0,224,255,.15)}
+#join-screen .btn{
+  width:min(320px,100%);padding:16px;border:none;border-radius:14px;
+  font-size:16px;font-weight:700;cursor:pointer;color:#fff;
+  background:linear-gradient(135deg,#b14dff,#ff2a6d);
+  box-shadow:0 8px 24px rgba(180,50,255,.35);
+  margin-top:4px;min-height:52px;
+}
+#join-screen .btn:disabled{opacity:.55}
+#join-screen .msg{margin-top:14px;font-size:13px;color:#ff6b8a;min-height:20px;text-align:center;padding:0 12px}
+#join-screen .hint{margin-top:22px;font-size:12px;color:rgba(255,255,255,.35);text-align:center;line-height:1.55}
+#join-screen .hint a{color:#00e0ff;text-decoration:none}
+
+/* ===== STAGE HUD ===== */
+#stage-ui{position:fixed;inset:0;z-index:10;pointer-events:none;display:none}
+#stage-ui.show{display:block}
+
+#led-wrap{
+  position:absolute;left:50%;transform:translateX(-50%);
+  top:max(8px,env(safe-area-inset-top));
+  width:min(96vw,640px);max-width:calc(100% - 12px);
+  background:rgba(8,4,18,.9);
+  border:2px solid #ff66cc;
+  box-shadow:0 0 18px rgba(255,100,200,.4);
+  border-radius:10px;overflow:hidden;padding:7px 0;
+}
+#led-track{display:flex;white-space:nowrap;animation:marquee 14s linear infinite;will-change:transform}
+#led-track span{
+  font-size:clamp(12px,3.6vw,18px);font-weight:800;letter-spacing:2px;color:#ff66cc;
+  text-shadow:0 0 8px #ff66cc,0 0 14px #ff2a6d;padding:0 28px;
+  font-family:ui-monospace,monospace;
+}
+@keyframes marquee{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+
+#hud{
+  position:absolute;left:50%;transform:translateX(-50%);
+  bottom:max(10px,env(safe-area-inset-bottom));
+  background:rgba(0,0,0,.6);padding:6px 14px;border-radius:16px;
+  font-size:12px;color:rgba(255,255,255,.75);
+  border:1px solid rgba(180,80,255,.35);white-space:nowrap;
+  display:flex;align-items:center;gap:10px;pointer-events:auto;
+}
+#hud strong{color:#ff66cc}
+#btn-sound{
+  pointer-events:auto;border:none;border-radius:12px;padding:6px 10px;
+  font-size:11px;font-weight:700;cursor:pointer;color:#fff;
+  background:linear-gradient(135deg,#00e0ff,#0080ff);
+}
+#btn-music{pointer-events:auto;border:0;border-radius:12px;padding:6px 10px;font-size:11px;font-weight:700;color:#fff;background:#8b42cc;cursor:pointer}
+#btn-sound.on{background:linear-gradient(135deg,#00ffa8,#00aa66)}
+#speech-status{
+  position:absolute;left:50%;transform:translateX(-50%);
+  bottom:max(48px,calc(env(safe-area-inset-bottom) + 40px));
+  font-size:11px;color:rgba(255,255,255,.55);background:rgba(0,0,0,.45);
+  padding:4px 10px;border-radius:10px;max-width:90vw;text-align:center;
+  pointer-events:none;display:none;
+}
+#speech-status.show{display:block}
+
+#conn{
+  position:absolute;
+  top:max(52px,calc(env(safe-area-inset-top) + 44px));
+  right:max(8px,env(safe-area-inset-right));
+  font-size:11px;color:rgba(255,255,255,.4);
+  background:rgba(0,0,0,.45);padding:4px 9px;border-radius:10px;
+}
+#conn.on{color:#00ffa8}
+
+#join-toast{
+  position:absolute;top:45%;left:50%;transform:translate(-50%,-50%) scale(.9);
+  background:rgba(10,5,22,.95);border:2px solid #00e0ff;
+  box-shadow:0 0 28px rgba(0,220,255,.4);
+  padding:14px 20px;border-radius:14px;
+  opacity:0;transition:opacity .28s,transform .28s;
+  text-align:center;width:min(82vw,280px);
+}
+#join-toast.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+#join-toast .jt-label{font-size:10px;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
+#join-toast .jt-name{
+  font-size:clamp(18px,5.5vw,26px);font-weight:800;
+  background:linear-gradient(90deg,#ff66cc,#00e0ff);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  word-break:break-word;
+}
+#join-toast .jt-sub{font-size:12px;color:#00ffa8;margin-top:5px}
+
+/* Landscape tweaks */
+@media (orientation:landscape) and (max-height:500px){
+  #led-wrap{padding:4px 0;top:max(4px,env(safe-area-inset-top))}
+  #led-track span{font-size:12px;padding:0 20px}
+  #hud{bottom:max(6px,env(safe-area-inset-bottom));font-size:11px;padding:4px 10px}
+  #conn{top:max(36px,calc(env(safe-area-inset-top) + 30px));font-size:10px}
+  #join-toast{padding:10px 16px}
+}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="join-screen">
+  <h1>DJ Bar Live</h1>
+  <p class="sub">Nhập mã phòng từ máy Admin<br>để xem sân nhảy trên điện thoại</p>
+  <div class="field">
+    <label>Mã phòng</label>
+    <input id="room-input" maxlength="6" placeholder="ABC123" autocomplete="off" enterkeyhint="go" inputmode="text" autocapitalize="characters"/>
+  </div>
+  <button class="btn" id="btn-join">Vào sân khấu</button>
+  <div class="msg" id="join-msg"></div>
+  <p class="hint">Mã phòng hiện trên trang Điều khiển (máy tính).<br>Admin: <a href="dj-bar-login.html">Đăng nhập</a></p>
+</div>
+
+<div id="stage-ui">
+  <div id="led-wrap" style="display:none"><div id="led-track"><span id="led1">♪ FUNK PULSE  ·  </span><span id="led2">♪ FUNK PULSE  ·  </span></div></div>
+  <div id="hud">Đang nhảy: <strong id="cnt">0</strong>
+    <button type="button" id="btn-sound">Bật tiếng 🔊</button><button type="button" id="btn-music">Bật nhạc ▶</button>
+  </div>
+  <div id="speech-status"></div>
+  <div id="stage-music" aria-hidden="true" style="position:absolute;left:-9999px;top:-9999px;width:320px;height:150px;overflow:hidden;pointer-events:none;visibility:hidden">
+    <div id="stage-music-label" style="color:#fff;font-size:12px;margin-bottom:5px">Nhạc sân khấu</div>
+    <audio id="stage-audio" controls playsinline style="width:100%;display:none"></audio>
+    <iframe id="stage-frame" title="Trình phát nhạc" allow="autoplay; encrypted-media; picture-in-picture" referrerpolicy="strict-origin-when-cross-origin" style="width:100%;height:120px;border:0;display:none"></iframe>
+  </div>
+  <div id="conn">○ Chưa kết nối</div>
+  <div id="join-toast">
+    <div class="jt-label">Thông báo</div>
+    <div class="jt-name" id="jt-name">—</div>
+    <div class="jt-sub">đã vào sàn nhảy!</div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}</script>
+<script type="module">
+import * as THREE from 'three';
+
+const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 0 && innerWidth < 900);
+const MAX_VISUAL = isMobile ? 36 : 60;
+const MAX_TOTAL = 1000;
+const DPR = Math.min(devicePixelRatio, isMobile ? 1.5 : 2);
+
+const canvas = document.getElementById('c');
+let renderer, scene, camera, clock;
+let dancers = [];
+let allNames = [];
+let nameFrames = {};
+let knownNames = new Set();
+let discoBall, neonMeshes = [], spotLights = [], floorTiles = [], discoSpots = [];
+let discoRays = [];
+let dj = null, deckL, deckR, centerGlow;
+let djLedRings = [], djLedDots = [], djConsoleLights = [];
+let djOperator = null;
+const djPlatformHeight = 1.65; // Dùng chung trong dựng sân khấu và vòng lặp hoạt ảnh
+let djSign = null, djSignCanvas = null, djSignTexture = null, ceilingBeams = [], floorBeams = [];
+let clubFloorTiles = [], wallBars = [];
+let djPortalRings = [], djEqualizerBars = [];
+let wallSongCanvas = null, wallSongTexture = null, wallSongTitle = "FUNK PULSE", lastWallSongFrame = -1;
+let joinQueue = [], joinShowing = false;
+let entranceQueue = [], activeEntrance = null;
+let entryBurstTimer = null, entryBurstNames = [], entryBurstNoZoomUntil = 0;
+let guestDjName = "", guestDjTravel = null;
+let cameraHome = null;
+const entranceCameraTarget = new THREE.Vector3();
+let conn = null, peer = null, started = false;
+
+const COLORS = ['#ff66aa','#66ccff','#ffcc44','#aaff66','#ff8866','#cc88ff','#66ffcc','#ff6688','#88aaff','#ffaa66','#66ffaa','#ff66cc','#ffffff','#00e0ff'];
+
+function vw() { return window.visualViewport ? visualViewport.width : innerWidth; }
+function vh() { return window.visualViewport ? visualViewport.height : innerHeight; }
+
+function setConnUI(text, on) {
+  const el = document.getElementById('conn');
+  el.textContent = (on ? '● ' : '○ ') + text;
+  el.className = on ? 'on' : '';
+}
+
+function showStageUI() {
+  document.getElementById('join-screen').classList.add('hidden');
+  document.getElementById('stage-ui').classList.add('show');
+}
+
+function fitCamera() {
+  if (!camera) return;
+  const w = vw(), h = vh();
+  const aspect = w / h;
+  camera.aspect = aspect;
+  // Portrait: kéo camera ra xa + cao hơn để thấy cả sàn
+  if (aspect < 0.85) {
+    camera.fov = 60;
+    camera.position.set(0, 5.7, 16.2);
+  } else if (aspect < 1.2) {
+    camera.fov = 55;
+    camera.position.set(0, 5.6, 15.1);
+  } else {
+    // Landscape phone
+    camera.fov = 50;
+    camera.position.set(0, 5.3, 13.8);
+  }
+  camera.updateProjectionMatrix();
+  camera.lookAt(0, 2.0, -2.5);
+  cameraHome = camera.position.clone();
+}
+
+function onResize() {
+  if (!renderer || !camera) return;
+  const w = vw(), h = vh();
+  renderer.setSize(w, h, false);
+  canvas.style.width = w + 'px';
+  canvas.style.height = h + 'px';
+  fitCamera();
+}
+
+function initScene() {
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0a0618);
+  scene.fog = new THREE.Fog(0x0a0618, isMobile ? 14 : 16, isMobile ? 32 : 36);
+
+  camera = new THREE.PerspectiveCamera(52, vw() / vh(), 0.1, 50);
+
+  renderer = new THREE.WebGLRenderer({
+    canvas, antialias: !isMobile, powerPreference: 'high-performance',
+    alpha: false
+  });
+  renderer.setPixelRatio(DPR);
+  renderer.setSize(vw(), vh(), false);
+
+  clock = new THREE.Clock();
+
+  scene.add(new THREE.AmbientLight(0x3a2860, 0.75));
+  const f1 = new THREE.PointLight(0xff4a8a, 0.8, 20); f1.position.set(-4, 5, 3); scene.add(f1);
+  const f2 = new THREE.PointLight(0x40e8ff, 0.65, 20); f2.position.set(4, 5, 3); scene.add(f2);
+
+  // Floor
+  const floor = new THREE.Mesh(
+    new THREE.CircleGeometry(7.0, isMobile ? 32 : 48),
+    new THREE.MeshStandardMaterial({ color: 0x2a1a48, metalness: 0.5, roughness: 0.35 })
+  );
+  floor.rotation.x = -Math.PI / 2; scene.add(floor);
+
+  centerGlow = null; // Không dùng vòng sáng giữa sàn.
+
+  const tileColors = [0xd060ff, 0x3a7bff, 0xff77bb, 0x20ddff];
+  const ringCount = isMobile ? 3 : 4;
+  for (let r = 0; r < ringCount; r++) {
+    const count = isMobile ? (6 + r * 4) : (8 + r * 5);
+    for (let i = 0; i < count; i++) {
+      const a = (i / count) * Math.PI * 2;
+      const rad = 1.15 + r * 1.35;
+      const tile = new THREE.Mesh(
+        new THREE.CircleGeometry(0.48, 6),
+        new THREE.MeshBasicMaterial({ color: tileColors[(i + r) % 4], transparent: true, opacity: 0.85 })
+      );
+      tile.rotation.x = -Math.PI / 2;
+      tile.position.set(Math.cos(a) * rad, 0.03, Math.sin(a) * rad);
+      scene.add(tile);
+      floorTiles.push({ mesh: tile, phase: i + r * 3 });
+    }
+  }
+
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(6.8, 0.09, 6, 40), new THREE.MeshBasicMaterial({ color: 0xff66cc }));
+  ring.rotation.x = Math.PI / 2; ring.position.y = 0.05; scene.add(ring);
+  neonMeshes.push({ mesh: ring, color: new THREE.Color(0xff66cc) });
+
+  const wallMat = new THREE.MeshStandardMaterial({ color: 0x16102a });
+  const backWall = new THREE.Mesh(new THREE.PlaneGeometry(18, 7.5), wallMat);
+  backWall.position.set(0, 3.7, -7.2); scene.add(backWall);
+  // Màn LED tên bài hát đặt cao trên đỉnh cổng LED, không che DJ.
+  wallSongCanvas = document.createElement('canvas');
+  wallSongCanvas.width = 1024; wallSongCanvas.height = 160;
+  wallSongTexture = new THREE.CanvasTexture(wallSongCanvas);
+  wallSongTexture.colorSpace = THREE.SRGBColorSpace;
+  const wallSongMesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(9.8, 0.92),
+    new THREE.MeshBasicMaterial({map:wallSongTexture,transparent:false,side:THREE.DoubleSide})
+  );
+  wallSongMesh.position.set(0, 5.42, -6.91);
+  scene.add(wallSongMesh);
+  // Cổng LED 3D phía sau DJ: các vòng đa giác lùi sâu về phía tường.
+  // Giữ phần chữ tên bài hát ở phía trước, không bị LED che.
+  const portalColors = [0xff39b8, 0x00eaff, 0xa96aff, 0xffd65c];
+  const portalLayers = isMobile ? 5 : 7;
+  for (let i = 0; i < portalLayers; i++) {
+    const w = 4.95 - i * 0.43;
+    const h = 4.25 - i * 0.34;
+    const depth = -6.98 - i * 0.025;
+    const points = [
+      new THREE.Vector3(-w/2, 2.65-h/2, depth),
+      new THREE.Vector3(-w/2, 2.65+h/2-0.50, depth),
+      new THREE.Vector3(-w/2+0.55, 2.65+h/2, depth),
+      new THREE.Vector3(w/2-0.55, 2.65+h/2, depth),
+      new THREE.Vector3(w/2, 2.65+h/2-0.50, depth),
+      new THREE.Vector3(w/2, 2.65-h/2, depth)
+    ];
+    const geom = new THREE.BufferGeometry().setFromPoints(points);
+    const material = new THREE.LineBasicMaterial({
+      color: portalColors[i%portalColors.length], transparent:true, opacity:0.65
+    });
+    const line = new THREE.Line(geom,material);
+    scene.add(line);
+    djPortalRings.push({mesh:line, phase:i*0.65});
+  }
+  // Hai cụm Equalizer LED ở hai bên cổng, thay đổi độ cao theo nhịp.
+  const eqCount = isMobile ? 8 : 12;
+  for (const side of [-1,1]) {
+    for (let i=0;i<eqCount;i++) {
+      const x = side * (3.12 + i*0.25);
+      const height=0.48;
+      const bar = new THREE.Mesh(
+        new THREE.BoxGeometry(0.145,height,0.07),
+        new THREE.MeshBasicMaterial({color:portalColors[(i+(side===1?1:0))%4]})
+      );
+      bar.position.set(x,1.98,-7.015);
+      scene.add(bar);
+      djEqualizerBars.push({mesh:bar,phase:i*0.72+(side===1?2.4:0),base:1.70});
+    }
+  }
+  const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(14, 7.5), wallMat);
+  leftWall.rotation.y = Math.PI / 2; leftWall.position.set(-9, 3.7, 0); scene.add(leftWall);
+  const rightWall = leftWall.clone(); rightWall.position.x = 9; rightWall.rotation.y = -Math.PI / 2; scene.add(rightWall);
+
+  function panel(x, y, z, w, h, color) {
+    const p = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.7 }));
+    p.position.set(x, y, z); scene.add(p);
+    neonMeshes.push({ mesh: p, color: new THREE.Color(color) });
+  }
+  panel(-4, 3.5, -7.1, 3, 0.85, 0xff2a6d);
+  panel(4, 3.5, -7.1, 3, 0.85, 0x00e0ff);
+  panel(0, 2.7, -7.1, 5, 0.55, 0xb14dff);
+
+  const ceil = new THREE.Mesh(new THREE.PlaneGeometry(18, 14), new THREE.MeshStandardMaterial({ color: 0x0e0a18 }));
+  ceil.rotation.x = Math.PI / 2; ceil.position.y = 7.6; scene.add(ceil);
+
+  const spotN = isMobile ? 8 : 12;
+  for (let i = 0; i < spotN; i++) {
+    const x = -5.8 + i * (11.6 / (spotN - 1));
+    const lens = new THREE.Mesh(new THREE.SphereGeometry(0.18, 6, 6), new THREE.MeshBasicMaterial({ color: 0xffcc44 }));
+    lens.position.set(x, 7.2, -1.2); scene.add(lens);
+    const spot = new THREE.PointLight(0xffcc66, isMobile ? 0.28 : 0.52, 11);
+    spot.position.set(x, 6.8, -0.3); scene.add(spot);
+    spotLights.push({ light: spot, lens, phase: i * 0.4 });
+  }
+
+  // Đèn laser sợi mảnh bố trí đều dọc hai mép tường, chiếu xiên vào tâm sàn.
+  // Dùng mesh giả ánh sáng để không gây tải nặng trên điện thoại.
+  const beamColors = [0x00eaff, 0xff38aa, 0x9b68ff, 0xffce55, 0x34ffbc, 0xff6a92];
+  const beamCount = isMobile ? 8 : 12; // 6 tia mỗi bên trên máy tính, 4 tia mỗi bên trên điện thoại
+  for (let i = 0; i < beamCount; i++) {
+    const side = i % 2 === 0 ? -1 : 1;
+    const perWall = beamCount / 2;
+    const wallIndex = Math.floor(i / 2);
+    const x = side * 7.45;
+    const z = -5.7 + wallIndex * (10.5 / Math.max(1, perWall-1));
+    const y = 7.12; // gắn sát mép trên của hai tường
+    const targetX = side * (0.25 + (wallIndex % 3) * 0.40);
+    const targetZ = Math.max(-4.0, Math.min(4.8, z * 0.48 + ((wallIndex % 3)-1)*0.75));
+    const color = beamColors[i % beamColors.length];
+    const startPoint = new THREE.Vector3(x, y, z);
+    const endPoint = new THREE.Vector3(targetX, 0.10, targetZ);
+    const vector = new THREE.Vector3().subVectors(endPoint, startPoint);
+    const beam = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.012, 0.045, vector.length(), 6, 1, true),
+      new THREE.MeshBasicMaterial({color,transparent:true,opacity:0.28,depthWrite:false,side:THREE.DoubleSide,blending:THREE.AdditiveBlending})
+    );
+    beam.position.copy(startPoint).add(endPoint).multiplyScalar(0.5);
+    beam.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),vector.clone().normalize());
+    scene.add(beam);
+    const glow = new THREE.Mesh(new THREE.CircleGeometry(0.17, 12),new THREE.MeshBasicMaterial({color,transparent:true,opacity:0.23,depthWrite:false,blending:THREE.AdditiveBlending}));
+    glow.rotation.x=-Math.PI/2;glow.position.copy(endPoint);glow.position.y=0.065;scene.add(glow);
+    const fixture = new THREE.Mesh(new THREE.BoxGeometry(0.24,0.22,0.30),new THREE.MeshStandardMaterial({color:0x151521,metalness:0.6,roughness:0.3}));
+    fixture.position.copy(startPoint);scene.add(fixture);
+    const lens = new THREE.Mesh(new THREE.CircleGeometry(0.085,10),new THREE.MeshBasicMaterial({color}));
+    lens.position.set(x-side*0.15,y,z+0.08);lens.rotation.y=side*Math.PI/2;scene.add(lens);
+    ceilingBeams.push({beam,glow,fixture,lens,phase:i*0.8,angle:i*1.1,x,y,z,targetX,targetZ,side});
+  }
+  // Chỉ giữ các ô LED lục giác trên mặt sàn; bỏ toàn bộ ô kim cương.
+  // Viền sàn 3 lớp, phân tách rõ sân khấu với khu vực xung quanh.
+  [5.95,6.36,6.72].forEach((r,i)=>{
+    const line=new THREE.Mesh(new THREE.TorusGeometry(r,0.028+i*0.007,5,72),new THREE.MeshBasicMaterial({color:[0x00eaff,0xff4fae,0xa66cff][i],transparent:true,opacity:0.70}));
+    line.rotation.x=Math.PI/2;line.position.y=0.055+i*0.007;scene.add(line);
+    neonMeshes.push({mesh:line,color:new THREE.Color([0x00eaff,0xff4fae,0xa66cff][i])});
+  });
+  // Các thanh LED chạy dọc tường hai bên để tạo chiều sâu club.
+  for(const side of [-1,1])for(let i=0;i<5;i++){
+    const bar=new THREE.Mesh(new THREE.BoxGeometry(0.09,2.4,0.10),new THREE.MeshBasicMaterial({color:i%2?0x00eaff:0xff4aa8,transparent:true,opacity:0.52}));
+    bar.position.set(side*8.87,2.5,-5+i*2.4);scene.add(bar);
+    wallBars.push({mesh:bar,phase:i*0.9+side});
+  }
+
+  // Quả cầu disco nhiều mảnh gương thật, thay cho khối đa diện thô.
+  discoBall = new THREE.Group();
+  const ballRadius = 0.57;
+  const core = new THREE.Mesh(
+    new THREE.SphereGeometry(ballRadius*0.97, isMobile?20:32, isMobile?14:24),
+    new THREE.MeshStandardMaterial({color:0x25283b,metalness:0.88,roughness:0.22})
+  );
+  discoBall.add(core);
+  const rows = isMobile ? 17 : 24;
+  const tileSize = isMobile ? 0.084 : 0.062;
+  const tileGeometry = new THREE.PlaneGeometry(tileSize,tileSize);
+  const tileMaterial = new THREE.MeshStandardMaterial({
+    color:0xe9f4ff,metalness:0.96,roughness:0.085,
+    side:THREE.DoubleSide,emissive:0x182238,emissiveIntensity:0.28
+  });
+  const tiles=[];
+  for(let row=1;row<rows;row++){
+    const theta=Math.PI*row/rows;
+    const n=Math.max(8,Math.round(2*Math.PI*ballRadius*Math.sin(theta)/(tileSize*1.10)));
+    for(let col=0;col<n;col++){
+      const phi=2*Math.PI*(col+(row%2)*0.5)/n;
+      const normal=new THREE.Vector3(Math.sin(theta)*Math.cos(phi),Math.cos(theta),Math.sin(theta)*Math.sin(phi));
+      tiles.push(normal);
+    }
+  }
+  const mirrorTiles = new THREE.InstancedMesh(tileGeometry,tileMaterial,tiles.length);
+  const tileDummy = new THREE.Object3D();
+  const silver=new THREE.Color(0xdceaff),white=new THREE.Color(0xffffff),blue=new THREE.Color(0x9bc5ff);
+  tiles.forEach((normal,i)=>{
+    tileDummy.position.copy(normal).multiplyScalar(ballRadius+0.005);
+    tileDummy.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),normal);
+    tileDummy.updateMatrix();
+    mirrorTiles.setMatrixAt(i,tileDummy.matrix);
+    mirrorTiles.setColorAt(i,i%9===0?blue:(i%4===0?white:silver));
+  });
+  mirrorTiles.instanceMatrix.needsUpdate=true;
+  discoBall.add(mirrorTiles);
+  const cap=new THREE.Mesh(new THREE.CylinderGeometry(0.095,0.11,0.075,12),
+    new THREE.MeshStandardMaterial({color:0xbccbdc,metalness:0.9,roughness:0.18}));
+  cap.position.y=ballRadius+0.035;discoBall.add(cap);
+  // Trục treo và móc nối lên trần.
+  const cable=new THREE.Mesh(new THREE.CylinderGeometry(0.012,0.012,0.85,6),
+    new THREE.MeshStandardMaterial({color:0x8796aa,metalness:0.8,roughness:0.3}));
+  cable.position.set(0,6.4+ballRadius+0.48,0);scene.add(cable);
+  const sparkleLight = new THREE.PointLight(0xd8ecff,isMobile?0.8:1.3,4.8);
+  sparkleLight.position.set(0,0.1,0);discoBall.add(sparkleLight);
+  discoBall.position.set(0,6.4,0);scene.add(discoBall);
+  // Các tia phản chiếu tỏa từ quả cầu đến sàn và tường.
+  // Dùng vật liệu cộng sáng nhẹ để tạo cảm giác ánh gương trong sương.
+  const rayCount = isMobile ? 5 : 8;
+  const rayOrigin = new THREE.Vector3(0,6.4,0);
+  for(let i=0;i<rayCount;i++){
+    const hue=[0xd9edff,0xa6dcff,0xffbce9,0xffffff][i%4];
+    const mat=new THREE.MeshBasicMaterial({
+      color:hue,transparent:true,opacity:0.045,
+      depthWrite:false,side:THREE.DoubleSide,blending:THREE.AdditiveBlending
+    });
+    const ray=new THREE.Mesh(new THREE.CylinderGeometry(0.003,0.035,1,5,1,true),mat);
+    scene.add(ray);
+    const spot=new THREE.Mesh(new THREE.CircleGeometry(isMobile?0.12:0.16,12),
+      new THREE.MeshBasicMaterial({color:hue,transparent:true,opacity:0.22,
+        depthWrite:false,side:THREE.DoubleSide,blending:THREE.AdditiveBlending}));
+    spot.rotation.x=-Math.PI/2;
+    scene.add(spot);
+    discoRays.push({ray,spot,phase:i*Math.PI*2/rayCount,origin:rayOrigin.clone()});
+  }
+
+
+  const dcols = isMobile ? [0xff2a6d, 0x00e0ff, 0xb14dff, 0xff9f1a] : [0xff2a6d, 0x00e0ff, 0xb14dff, 0x00ffa8, 0xff9f1a];
+  dcols.forEach((c, i) => {
+    const l = new THREE.PointLight(c, 0.65, 10); scene.add(l);
+    discoSpots.push({ light: l, angle: (i / dcols.length) * Math.PI * 2 });
+  });
+
+  function speaker(x, z) {
+    const body = new THREE.Mesh(new THREE.BoxGeometry(1.0, 1.7, 0.7), new THREE.MeshStandardMaterial({ color: 0x1a1a22, metalness: 0.4 }));
+    body.position.set(x, 0.85, z); scene.add(body);
+    const strip = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.5, 0.06), new THREE.MeshBasicMaterial({ color: 0xff66cc }));
+    strip.position.set(x + (x > 0 ? -0.35 : 0.35), 0.85, z + 0.2); scene.add(strip);
+    neonMeshes.push({ mesh: strip, color: new THREE.Color(0xff66cc) });
+  }
+  speaker(-7.2, -2); speaker(7.2, -2);
+  if (!isMobile) { speaker(-7.2, 3.2); speaker(7.2, 3.2); }
+
+  // Bục DJ riêng cao 0.68m, đặt cuối sàn nhảy và hướng về người xem.
+  // Chiều cao bục DJ dùng biến chung djPlatformHeight.
+  const platformMat = new THREE.MeshStandardMaterial({color:0x171326,metalness:0.52,roughness:0.42});
+  const platform = new THREE.Mesh(new THREE.BoxGeometry(5.6,djPlatformHeight,3.0),platformMat);
+  platform.position.set(0,djPlatformHeight/2,-6.05);scene.add(platform);
+  const topDeck = new THREE.Mesh(new THREE.BoxGeometry(5.65,0.075,3.05),new THREE.MeshStandardMaterial({color:0x28213f,metalness:0.56,roughness:0.32}));
+  topDeck.position.set(0,djPlatformHeight+0.03,-6.05);scene.add(topDeck);
+  // Viền neon ở cạnh trước và hai cạnh bên bục.
+  const edgeMat = new THREE.MeshBasicMaterial({color:0xff66cc});
+  const frontEdge = new THREE.Mesh(new THREE.BoxGeometry(5.65,0.065,0.07),edgeMat);
+  frontEdge.position.set(0,djPlatformHeight+0.065,-4.52);scene.add(frontEdge);
+  neonMeshes.push({mesh:frontEdge,color:new THREE.Color(0xff66cc)});
+  for (const side of [-1,1]) {
+    const edge = new THREE.Mesh(new THREE.BoxGeometry(0.065,0.065,3.0),new THREE.MeshBasicMaterial({color:0x00eaff}));
+    edge.position.set(side*2.81,djPlatformHeight+0.065,-6.05);scene.add(edge);
+    neonMeshes.push({mesh:edge,color:new THREE.Color(0x00eaff)});
+    // Cột đèn hai góc trước, giúp nhận ra độ cao của bục.
+    const post = new THREE.Mesh(new THREE.BoxGeometry(0.12,djPlatformHeight,0.12),new THREE.MeshBasicMaterial({color:0x8a3c9e}));
+    post.position.set(side*2.77,djPlatformHeight/2,-4.53);scene.add(post);
+  }
+  // Bậc lên bục ở cạnh bên phải, không chắn mặt trước bàn DJ.
+  for(let i=0;i<2;i++){
+    const stair = new THREE.Mesh(new THREE.BoxGeometry(0.78,0.23*(i+1),0.68),platformMat);
+    stair.position.set(3.12+i*0.67,0.115*(i+1),-5.85);scene.add(stair);
+  }
+  const booth = new THREE.Mesh(new THREE.BoxGeometry(3.2, 1.5, 1.25), new THREE.MeshStandardMaterial({ color: 0x221a38, metalness: 0.4 }));
+  booth.position.set(0, 0.75 + djPlatformHeight, -6.1); scene.add(booth);
+  const boothTop = new THREE.Mesh(new THREE.BoxGeometry(3.3, 0.08, 1.3), new THREE.MeshStandardMaterial({ color: 0x2e2450, metalness: 0.5 }));
+  boothTop.position.set(0, 1.55 + djPlatformHeight, -6.1); scene.add(boothTop);
+
+  function deck(x) {
+    const d = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.06, 16), new THREE.MeshStandardMaterial({ color: 0x2a2a38, metalness: 0.7 }));
+    d.position.set(x, 1.64 + djPlatformHeight, -6.1); scene.add(d); return d;
+  }
+  deckL = deck(-0.85); deckR = deck(0.85);
+  // Hai mâm đĩa LED nhiều vòng sáng, quay nổi bật ở phía trên bàn DJ.
+  const ledColors = [0xff4ac8,0x00eaff,0xffd64d];
+  for (const cx of [-0.85,0.85]) {
+    for (let j=0;j<3;j++) {
+      const radius = 0.21 + j*0.065;
+      const ring = new THREE.Mesh(
+        new THREE.TorusGeometry(radius,0.012+j*0.002,5,isMobile?24:40),
+        new THREE.MeshBasicMaterial({color:ledColors[j],transparent:true,opacity:0.94})
+      );
+      ring.rotation.x = Math.PI/2;
+      ring.position.set(cx,1.70+djPlatformHeight+j*0.004,-6.1);
+      scene.add(ring); djLedRings.push({mesh:ring,phase:j*1.5+cx});
+    }
+    const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.065,0.065,0.025,16),
+      new THREE.MeshBasicMaterial({color:0xffffff}));
+    hub.position.set(cx,1.72+djPlatformHeight,-6.1);scene.add(hub);
+    for (let k=0;k<12;k++) {
+      const a=k*Math.PI/6;
+      const dot=new THREE.Mesh(new THREE.SphereGeometry(0.023,5,4),
+        new THREE.MeshBasicMaterial({color:ledColors[k%3]}));
+      dot.position.set(cx+Math.cos(a)*0.39,1.70+djPlatformHeight,-6.1+Math.sin(a)*0.39);
+      scene.add(dot);djLedDots.push({mesh:dot,phase:k*0.6+cx});
+    }
+  }
+  // Mixer LED trung tâm, thanh sáng và dãy nút điều khiển.
+  const mixer = new THREE.Mesh(new THREE.BoxGeometry(0.45,0.09,0.75),
+    new THREE.MeshStandardMaterial({color:0x090b18,metalness:0.55,roughness:0.24}));
+  mixer.position.set(0,1.66+djPlatformHeight,-6.1);scene.add(mixer);
+  for(let k=0;k<7;k++){
+    const color=k%2?0x00eaff:0xff66cc;
+    const light=new THREE.Mesh(new THREE.BoxGeometry(0.035,0.025,0.11),
+      new THREE.MeshBasicMaterial({color}));
+    light.position.set(-0.15+k*0.05,1.725+djPlatformHeight,-6.12);
+    scene.add(light);djConsoleLights.push({mesh:light,phase:k*0.75});
+  }
+
+  const boothNeon = new THREE.Mesh(new THREE.BoxGeometry(2.9, 0.05, 0.05), new THREE.MeshBasicMaterial({ color: 0x00e0ff }));
+  boothNeon.position.set(0, 1.6 + djPlatformHeight, -5.45); scene.add(boothNeon);
+  neonMeshes.push({ mesh: boothNeon, color: new THREE.Color(0x00e0ff) });
+
+  // Biển chữ LED trên mặt trước bàn DJ, cập nhật trực tiếp từ Admin.
+  djSignCanvas = document.createElement('canvas');
+  djSignCanvas.width = 1024; djSignCanvas.height = 256;
+  djSignTexture = new THREE.CanvasTexture(djSignCanvas);
+  djSignTexture.colorSpace = THREE.SRGBColorSpace;
+  djSign = new THREE.Mesh(new THREE.PlaneGeometry(2.9, 1.03),
+    new THREE.MeshBasicMaterial({map:djSignTexture, transparent:true, side:THREE.DoubleSide}));
+  djSign.position.set(0, 0.78 + djPlatformHeight, -5.463);
+  // Khôi phục bảng chữ trên mặt trước bàn DJ, độc lập với chữ bài hát chạy trên tường.
+  djSign.visible = true;
+  scene.add(djSign);
+  setDjLabel('DJ BAR LIVE');
+
+  // Một DJ duy nhất nhảy trên sân khấu, không thêm nhân vật trùng lặp.
+  // DJ biểu diễn nhảy sung phía sau bàn LED.
+  djOperator = new THREE.Group();
+  const operatorJacket = new THREE.MeshStandardMaterial({color:0x11142a,metalness:0.25,roughness:0.5});
+  const operatorSkin = new THREE.MeshStandardMaterial({color:0xffc8a5,roughness:0.65});
+  const operatorPink = new THREE.MeshBasicMaterial({color:0xff42bf});
+  const opTorso = new THREE.Mesh(new THREE.CapsuleGeometry(0.32,0.60,5,10),operatorJacket);
+  opTorso.position.y=0.85;djOperator.add(opTorso);
+  const opHead = new THREE.Mesh(new THREE.SphereGeometry(0.24,12,9),operatorSkin);
+  opHead.position.y=1.60;djOperator.add(opHead);
+  const opHair = new THREE.Mesh(new THREE.SphereGeometry(0.255,12,8),
+    new THREE.MeshStandardMaterial({color:0x09091a}));
+  opHair.position.set(0,1.71,-0.025);opHair.scale.y=0.56;djOperator.add(opHair);
+  const headphones = new THREE.Mesh(new THREE.TorusGeometry(0.255,0.037,6,20,Math.PI),
+    operatorPink);
+  headphones.rotation.z=Math.PI;headphones.position.set(0,1.65,0);djOperator.add(headphones);
+  for (const side of [-1,1]) {
+    const leg = new THREE.Mesh(new THREE.CapsuleGeometry(0.115,0.45,3,7),operatorJacket);
+    leg.position.set(side*0.18,0.30,0);djOperator.add(leg);
+    const arm = new THREE.Group();
+    arm.position.set(side*0.32,1.12,0.10);
+    const sleeve = new THREE.Mesh(new THREE.CapsuleGeometry(0.09,0.48,4,8),operatorJacket);
+    sleeve.position.set(side*0.17,-0.20,0.31);
+    sleeve.rotation.z=side*0.46;sleeve.rotation.x=-0.55;arm.add(sleeve);
+    const hand = new THREE.Mesh(new THREE.SphereGeometry(0.095,8,6),operatorSkin);
+    hand.position.set(side*0.34,-0.35,0.62);arm.add(hand);
+    djOperator.add(arm);
+    djOperator.userData[side<0?'leftArm':'rightArm']=arm;
+  }
+  const operatorLogo = new THREE.Mesh(new THREE.BoxGeometry(0.40,0.055,0.045),operatorPink);
+  operatorLogo.position.set(0,1.08,0.32);djOperator.add(operatorLogo);
+  // Bàn che chân DJ tự nhiên, phần thân/đầu nhô rõ phía trên hai đĩa.
+  djOperator.position.set(0,djPlatformHeight+1.12,-6.78);
+  djOperator.scale.setScalar(1.18);
+  scene.add(djOperator);
+
+  fitCamera();
+  window.addEventListener('resize', onResize);
+  window.addEventListener('orientationchange', () => setTimeout(onResize, 150));
+  if (window.visualViewport) {
+    visualViewport.addEventListener('resize', onResize);
+    visualViewport.addEventListener('scroll', onResize);
+  }
+  animate();
+}
+
+function createChar(colorHex, isDJ = false) {
+  const g = new THREE.Group();
+  const skin = 0xffd5b0;
+  const col = new THREE.Color(colorHex);
+  const segs = isMobile ? 5 : 8;
+  const legM = new THREE.MeshStandardMaterial({ color: 0x222233 });
+  const legL = new THREE.Mesh(new THREE.CapsuleGeometry(0.08, 0.24, 2, segs), legM);
+  legL.position.set(-0.1, 0.26, 0); g.add(legL);
+  const legR = new THREE.Mesh(new THREE.CapsuleGeometry(0.08, 0.24, 2, segs), legM);
+  legR.position.set(0.1, 0.26, 0); g.add(legR);
+  const body = new THREE.Mesh(
+    new THREE.CapsuleGeometry(isDJ ? 0.25 : 0.22, 0.4, 3, segs),
+    new THREE.MeshStandardMaterial({ color: col, roughness: 0.5, metalness: 0.12 })
+  );
+  body.position.y = 0.8; g.add(body);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, segs, segs), new THREE.MeshStandardMaterial({ color: skin, roughness: 0.6 }));
+  head.position.y = 1.32; g.add(head);
+  const hair = new THREE.Mesh(new THREE.SphereGeometry(0.22, segs, segs), new THREE.MeshStandardMaterial({ color: isDJ ? 0x1a0a08 : 0x2a1a10, roughness: 0.85 }));
+  hair.position.y = 1.42; hair.scale.set(1.05, 0.6, 1.05); g.add(hair);
+  const am = new THREE.MeshStandardMaterial({ color: skin });
+  const armL = new THREE.Mesh(new THREE.CapsuleGeometry(0.05, 0.28, 2, segs), am);
+  armL.position.set(-0.3, 0.85, 0); armL.rotation.z = 0.25; g.add(armL);
+  const armR = new THREE.Mesh(new THREE.CapsuleGeometry(0.05, 0.28, 2, segs), am);
+  armR.position.set(0.3, 0.85, 0); armR.rotation.z = -0.25; g.add(armR);
+  g.userData = { armL, armR, legL, legR, body, phase: Math.random() * 6 };
+  return g;
+}
+
+function makeLabel(text, frame='none') {
+  const cv=document.createElement('canvas');cv.width=512;cv.height=128;
+  const ctx=cv.getContext('2d');
+  const themes={
+    gold:['#ffcf54','#fff0a0','#8d5200','♛'],
+    neon:['#ff4dbd','#ffc2ed','#710b69','★'],
+    ice:['#55eaff','#d7ffff','#0c5980','◆'],
+    fire:['#ff713b','#ffe08c','#98221a','✦'],
+    galaxy:['#a56cff','#f1b9ff','#4e2299','✧']
+  };
+  const theme=themes[frame],display=String(text).slice(0,22);
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  if(theme){
+    const grad=ctx.createLinearGradient(0,0,512,128);
+    grad.addColorStop(0,theme[0]);grad.addColorStop(0.5,theme[1]);grad.addColorStop(1,theme[2]);
+    ctx.shadowColor=theme[0];ctx.shadowBlur=19;
+    ctx.fillStyle='rgba(7,9,26,0.93)';
+    ctx.beginPath();ctx.roundRect(14,14,484,100,25);ctx.fill();
+    ctx.strokeStyle=grad;ctx.lineWidth=7;ctx.stroke();ctx.shadowBlur=0;
+    ctx.fillStyle=theme[1];ctx.font='bold 34px system-ui,sans-serif';
+    ctx.fillText(theme[3]+' '+display+' '+theme[3],256,65,450);
+  }else{
+    ctx.font='bold 39px system-ui,sans-serif';
+    ctx.lineWidth=5;ctx.strokeStyle='rgba(0,0,0,0.75)';
+    ctx.strokeText(display,256,65,475);
+    ctx.fillStyle='#ffffff';ctx.fillText(display,256,65,475);
+  }
+  const tex=new THREE.CanvasTexture(cv);tex.minFilter=THREE.LinearFilter;
+  const spr=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false}));
+  spr.scale.set(theme?2.05:1.65,theme?0.51:0.41,1);spr.position.y=1.85;
+  spr.userData.labelTexture=tex;return spr;
+}
+function updateNameplates(){
+  dancers.forEach(d=>{
+    const frame=nameFrames[d.name.toLowerCase()]||'none';
+    if(d.frame===frame)return;
+    const old=d.label;if(old){d.avatar.remove(old);old.material.map.dispose();old.material.dispose();}
+    d.label=makeLabel(d.name,frame);d.avatar.add(d.label);d.frame=frame;
+  });
+}
+
+function layoutVisual() {
+  const n = dancers.length;
+  if (!n) return;
+  const rings = n <= 12 ? 1 : n <= 28 ? 2 : 3;
+  let idx = 0;
+  for (let r = 0; r < rings && idx < n; r++) {
+    const inRing = Math.ceil((n - idx) / (rings - r));
+    const radius = 1.9 + r * 1.55;
+    for (let i = 0; i < inRing && idx < n; i++, idx++) {
+      const a = (i / inRing) * Math.PI * 2 - Math.PI / 2;
+      const d = dancers[idx];
+      d.mesh.position.x = Math.cos(a) * radius;
+      d.mesh.position.z = Math.sin(a) * radius;
+      d.mesh.rotation.y = a + Math.PI;
+      d.targetX = d.mesh.position.x;
+      d.targetZ = d.mesh.position.z;
+      if (d.entering) d.mesh.position.set(d.startX,0,d.startZ);
+      if (d.name.toLowerCase()===guestDjName.toLowerCase() && !guestDjTravel) d.mesh.position.set(2.0,djPlatformHeight,-6.85);
+    }
+  }
+}
+
+function rebuildVisual() {
+  const previous = new Map(dancers.map(d => [d.name.toLowerCase(),d]));
+  const next = [];
+  allNames.slice(-MAX_VISUAL).forEach((name, i) => {
+    let d = previous.get(name.toLowerCase());
+    if (!d) {
+      const mesh = new THREE.Group();
+      const avatar = createChar(COLORS[i % COLORS.length]);
+      const label=makeLabel(name,nameFrames[name.toLowerCase()]||'none');
+      avatar.add(label);
+      mesh.add(avatar);
+      scene.add(mesh);
+      d = { mesh, avatar, name, label, frame:nameFrames[name.toLowerCase()]||'none' };
+    }
+    next.push(d);
+    previous.delete(name.toLowerCase());
+  });
+  previous.forEach(d => scene.remove(d.mesh));
+  dancers = next;
+  updateNameplates();
+  layoutVisual();
+  if(guestDjName && !dancers.some(d=>d.name.toLowerCase()===guestDjName.toLowerCase())) setGuestDj('');
+  document.getElementById('cnt').textContent = allNames.length;
+}
+
+
+
+
+let speechReady = false;
+let cachedVoices = [];
+let speakChain = Promise.resolve();
+let ttsAudio = null;
+
+// Sửa lỗi Chrome: speech bị pause giữa chừng
+setInterval(() => {
+  try {
+    if (window.speechSynthesis && window.speechSynthesis.speaking && window.speechSynthesis.paused) {
+      window.speechSynthesis.resume();
+    }
+  } catch (e) {}
+}, 200);
+
+function setSpeechStatus(msg) {
+  const el = document.getElementById('speech-status');
+  if (!el) return;
+  if (!msg) { el.classList.remove('show'); el.textContent = ''; return; }
+  el.textContent = msg;
+  el.classList.add('show');
+}
+
+function refreshVoices() {
+  try {
+    cachedVoices = window.speechSynthesis ? (window.speechSynthesis.getVoices() || []) : [];
+  } catch (e) { cachedVoices = []; }
+  return cachedVoices;
+}
+
+function pickVietnameseVoice() {
+  const voices = refreshVoices();
+  if (!voices.length) return null;
+  const score = (v) => {
+    const lang = (v.lang || '').toLowerCase();
+    const name = (v.name || '').toLowerCase();
+    let s = 0;
+    if (lang === 'vi-vn') s += 200;
+    if (lang.startsWith('vi')) s += 150;
+    if (/vietnamese|vietnam|tiếng việt|tieng viet/.test(name)) s += 120;
+    if (/google/.test(name) && lang.startsWith('vi')) s += 90;
+    return s;
+  };
+  const ranked = voices.map(v => ({ v, s: score(v) })).filter(x => x.s > 0).sort((a, b) => b.s - a.s);
+  return ranked.length ? ranked[0].v : null;
+}
+
+function unlockSpeech() {
+  speechReady = true;
+  refreshVoices();
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (AC) {
+      if (!window.__djAudioCtx) window.__djAudioCtx = new AC();
+      if (window.__djAudioCtx.state === 'suspended') window.__djAudioCtx.resume();
+    }
+  } catch (e) {}
+  try {
+    if (!ttsAudio) ttsAudio = new Audio();
+    ttsAudio.playsInline = true;
+    // beep ngắn để unlock audio element
+    ttsAudio.src = 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdH2Onp6ahYB2bF1ihZSgoJ6TgXFlX2F/kp+enJGAdGphYX6PnZyYjX5xZmBijJienJmOf3JpY2KKmp2bmY5/cmlkYomXm5qZjn5xaWRiiJebmpmNfnFpZGKIl5uamY1+cWlkYg==';
+    ttsAudio.volume = 0.3;
+    ttsAudio.play().catch(() => {});
+  } catch (e) {}
+}
+
+// ---------- Chuẩn hoá chữ trước khi đọc ----------
+function cleanForSpeech(str) {
+  let t = String(str || '').normalize('NFC');           // gộp dấu: "e" + "̂" → "ê" (bàn phím iPhone hay tách dấu)
+  t = t.replace(/[_]+/g, ' ')
+       .replace(/[^\p{L}\p{M}\p{N}\s.,'’-]/gu, ' ')     // bỏ emoji / ký tự lạ làm TTS đọc sai
+       .replace(/\s+/g, ' ').trim();
+  return t;
+}
+function speakableName(name) {
+  let t = cleanForSpeech(name);
+  // Tên VIẾT HOA toàn bộ dễ bị đọc từng chữ cái → đổi sang chữ thường
+  if (t.length > 3 && t === t.toLocaleUpperCase('vi')) t = t.toLocaleLowerCase('vi');
+  return t;
+}
+
+function playChime() {
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    if (!window.__djAudioCtx) window.__djAudioCtx = new AC();
+    const ctx = window.__djAudioCtx;
+    if (ctx.state === 'suspended') ctx.resume();
+    const t0 = ctx.currentTime;
+    [660, 880, 1100].forEach((f, i) => {
+      const o = ctx.createOscillator(), g = ctx.createGain(), t = t0 + i * 0.13;
+      o.type = 'sine'; o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.3, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.28);
+      o.connect(g); g.connect(ctx.destination);
+      o.start(t); o.stop(t + 0.32);
+    });
+  } catch (e) {}
+}
+
+// Google Translate không cho phép fetch từ localhost (CORS).
+// Không fetch/cố giải mã URL bên thứ ba; dùng SpeechSynthesis nội bộ trước.
+// Chỉ khuếch đại âm thanh TTS tải được qua CORS; không tác động nhạc nền.
+// SpeechSynthesis của trình duyệt không cho Web Audio tăng quá volume=1.
+async function playAmplifiedTts(url) {
+  let ctx, source;
+  try {
+    const response = await fetch(url, {mode:'cors'});
+    if (!response.ok) return false;
+    const bytes = await response.arrayBuffer();
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return false;
+    ctx = window.__djAudioCtx || (window.__djAudioCtx = new AC());
+    if (ctx.state === 'suspended') await ctx.resume();
+    const buffer = await ctx.decodeAudioData(bytes);
+    source = ctx.createBufferSource(); source.buffer = buffer;
+    const gain = ctx.createGain(); gain.gain.value = 2.5;
+    const limiter = ctx.createDynamicsCompressor();
+    limiter.threshold.value = -12; limiter.knee.value = 0;
+    limiter.ratio.value = 18; limiter.attack.value = 0.003;
+    limiter.release.value = 0.16;
+    source.connect(gain); gain.connect(limiter); limiter.connect(ctx.destination);
+    return await new Promise(resolve => {
+      let ended = false;
+      source.onended = () => { if (!ended) { ended=true; resolve(true); } };
+      try { source.start(); } catch(e) { ended=true; resolve(false); }
+    });
+  } catch(e) { return false; }
+}
+// ---------- 1) Giọng Google tiếng Việt (có dấu) ----------
+function playGoogleUrl(url) {
+  return new Promise((resolve) => {
+    try {
+      if (!ttsAudio) ttsAudio = new Audio();
+      ttsAudio.playsInline = true;
+      try { ttsAudio.pause(); } catch (e) {}
+      let finished = false, started = false, t1, t2;
+      const done = (ok) => {
+        if (finished) return;
+        finished = true; clearTimeout(t1); clearTimeout(t2);
+        resolve(ok);
       };
-      document.getElementById("room-input").addEventListener("keydown", (e) => {
-        if (e.key === "Enter") {
-          unlockSpeech();
-          connectRoom(document.getElementById("room-input").value);
-        }
-      });
-      // Auto uppercase
-      document.getElementById("room-input").addEventListener("input", (e) => {
-        const el = e.target;
-        const s = el.selectionStart;
-        el.value = el.value.toUpperCase().replace(/[^A-Z0-9]/g, "");
-        el.setSelectionRange(s, s);
-      });
+      ttsAudio.onplaying = () => { started = true; };
+      ttsAudio.onended = () => done(true);
+      ttsAudio.onerror = () => done(false);
+      ttsAudio.src = url;
+      ttsAudio.volume = 1;
+      const p = ttsAudio.play();
+      if (p && p.catch) p.catch((err) => { console.warn('google tts', err); done(false); });
+      t1 = setTimeout(() => { if (!started) done(false); }, 4500);   // không phát được → thử cách khác
+      t2 = setTimeout(() => done(started), 15000);
+    } catch (e) { resolve(false); }
+  });
+}
+async function speakWithGoogle(text) {
+  const q = encodeURIComponent(text.normalize('NFC').slice(0, 180));
+  const urls = [
+    'https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=vi&q=' + q,
+    'https://translate.google.com.vn/translate_tts?ie=UTF-8&client=tw-ob&tl=vi&q=' + q,
+    'https://translate.googleapis.com/translate_tts?ie=UTF-8&client=gtx&tl=vi&q=' + q
+  ];
+  for (const u of urls) { if (await playGoogleUrl(u)) return true; }
+  return false;
+}
 
+// ---------- VoiceRSS (có khóa miễn phí, rất ổn định, có tiếng Việt) ----------
+let ttsKey = '';
+try { ttsKey = localStorage.getItem('djbar_tts_key') || ''; } catch (e) {}
+function setTtsKey(k) {
+  k = String(k || '').trim();
+  if (k === ttsKey) return;
+  ttsKey = k;
+  try { localStorage.setItem('djbar_tts_key', k); } catch (e) {}
+}
+async function speakWithVoiceRss(text) {
+  if (!ttsKey) return false;
+  const url = 'https://api.voicerss.org/?key=' + encodeURIComponent(ttsKey) +
+    '&hl=vi-vn&c=MP3&f=24khz_16bit_mono&src=' + encodeURIComponent(text.normalize('NFC').slice(0, 300));
+  if (await playAmplifiedTts(url)) return true;
+  return playGoogleUrl(url);
+}
+
+// ---------- 2) Giọng của máy — CHỈ khi máy có giọng tiếng Việt thật ----------
+// (giọng tiếng Anh đọc "đã vào sàn nhảy" sẽ sai dấu/sai âm nên không dùng)
+const keepUtts = [];
+function speakWithSynth(text) {
+  return new Promise((resolve) => {
+    const synth = window.speechSynthesis;
+    const voices = refreshVoices();
+    const voice = pickVietnameseVoice();
+    // Có danh sách giọng mà không có giọng Việt → bỏ (giọng Anh đọc sai).
+    // Danh sách rỗng (Android/iOS hay vậy) → vẫn thử với lang vi-VN.
+    if (!synth || (!voice && voices.length)) { resolve(false); return; }
+    let started = false, finished = false, t1, t2;
+    const done = (ok) => {
+      if (finished) return;
+      finished = true; clearTimeout(t1); clearTimeout(t2);
+      resolve(ok);
+    };
+    const go = () => {
       try {
-        const last = localStorage.getItem("djbar_stage_room");
-        if (last) document.getElementById("room-input").value = last;
-      } catch (e) {}
+        if (synth.paused) synth.resume();
+        const u = new SpeechSynthesisUtterance(text);
+        if (voice) u.voice = voice;
+        u.lang = (voice && voice.lang) || 'vi-VN';
+        u.rate = 0.86; u.pitch = 1; u.volume = 1;
+        keepUtts.push(u); if (keepUtts.length > 20) keepUtts.shift();
+        u.onstart = () => { started = true; };
+        u.onend = () => done(true);
+        u.onerror = (ev) => { console.warn('synth', ev && ev.error); done(false); };
+        synth.speak(u);
+        t1 = setTimeout(() => { if (!started) { try { synth.cancel(); } catch (e) {} done(false); } }, 3000);
+        t2 = setTimeout(() => done(started), 12000);
+      } catch (e) { done(false); }
+    };
+    if (synth.speaking || synth.pending) { try { synth.cancel(); } catch (e) {} setTimeout(go, 120); }
+    else go();
+  });
+}
 
-      if (window.speechSynthesis) {
-        refreshVoices();
-        window.speechSynthesis.onvoiceschanged = () => refreshVoices();
-      }
+// ---------- Hàng đợi đọc: lần lượt từng câu, không đọc đè ----------
+let vnChain = Promise.resolve();
+function speakVietnamese(text) {
+  const say = String(text || '').normalize('NFC').trim();
+  if (!say) return Promise.resolve(false);
+  const p = vnChain.then(async () => {
+    setSpeechStatus('Đang đọc: ' + say);
+    let ok = false;
+    if (ttsKey) ok = await speakWithVoiceRss(say);
+    if (!ok) ok = await speakWithSynth(say);
+    if (!ok) ok = await speakWithGoogle(say);
+    if (!ok) {
+      playChime();
+      setSpeechStatus(ttsKey ? 'Không đọc được: kiểm tra khóa VoiceRSS / mạng' : 'Không đọc được tiếng Việt — nhờ Admin nhập khóa VoiceRSS (miễn phí) hoặc cài giọng Việt cho máy');
+      await new Promise(r => setTimeout(r, 2500));
+    }
+    setTimeout(() => setSpeechStatus(''), 600);
+    await new Promise(r => setTimeout(r, 200));
+    return ok;
+  }).catch((e) => { console.warn(e); return false; });
+  vnChain = p.then(() => {});
+  return p;
+}
 
-      const btnSound = document.getElementById("btn-sound");
-      if (btnSound) {
-        btnSound.addEventListener("click", async () => {
-          btnSound.textContent = "Đang bật...";
-          speechReady = true;
-          unlockSpeech();
-          await new Promise((r) => setTimeout(r, 800));
-          await speakVietnamese("Đã bật tiếng Việt");
-          btnSound.textContent = "Đã bật 🔊";
-          btnSound.classList.add("on");
-        });
-      }
+function speakJoin(name) {
+  const n = speakableName(name);
+  if (!n) return;
+  speakVietnamese(n + ' đã vào sàn nhảy');
+}
 
-      function animateChar(char, dt, energy = 1) {
-        const ud = char.userData;
-        ud.phase += dt * (11 * energy);
-        const ph = ud.phase;
-        char.position.y = Math.abs(Math.sin(ph)) * 0.12 * energy;
-        ud.armL.rotation.z = 0.3 + Math.sin(ph) * 1.0 * energy;
-        ud.armR.rotation.z = -0.3 - Math.sin(ph + 1.1) * 1.0 * energy;
-        ud.legL.rotation.x = Math.sin(ph) * 0.4 * energy;
-        ud.legR.rotation.x = -Math.sin(ph) * 0.4 * energy;
-        ud.body.rotation.z = Math.sin(ph * 0.5) * 0.06 * energy;
-      }
+function showJoinToast(name) {
+  const n = String(name || '').trim();
+  if (!n) return;
+  joinQueue.push(n);
+  scheduleEntrance(n);
+  processJoinQueue();
+}
 
-      function animate() {
-        requestAnimationFrame(animate);
-        if (!renderer || !scene) return;
-        const dt = Math.min(clock.getDelta(), 0.05);
-        const t = clock.elapsedTime;
-        const LIGHT_SPEED = 1.5; // ← chỉnh tốc độ đèn ở đây (1 = như cũ, 2 = nhanh gấp đôi)
-        const lt = t * LIGHT_SPEED; // thời gian riêng cho đèn
+// Gom khách vào gần nhau thành một lượt: 1 người thì đón bằng camera,
+// từ 2 người trở lên thì vào ngay toàn sàn, không zoom và không xếp hàng.
+function scheduleEntrance(name) {
+  const now=performance.now();
+  if(now < entryBurstNoZoomUntil){
+    const d=dancers.find(d=>d.name.toLowerCase()===name.toLowerCase());
+    if(d){d.entering=false;d.mesh.position.set(d.targetX,0,d.targetZ);}
+    return;
+  }
+  entryBurstNames.push(name);
+  if(entryBurstTimer)clearTimeout(entryBurstTimer);
+  if(entryBurstNames.length>=2){
+    entryBurstNoZoomUntil=now+2200;
+    entryBurstNames=[];
+    entryBurstTimer=null;
+    if(activeEntrance){
+      const d=activeEntrance.d;
+      d.entering=false;d.mesh.position.set(d.targetX,0,d.targetZ);
+      activeEntrance=null;
+    }
+    entranceQueue.forEach(d=>{d.entering=false;d.mesh.position.set(d.targetX,0,d.targetZ);});
+    entranceQueue=[];
+    return;
+  }
+  entryBurstTimer=setTimeout(()=>{
+    entryBurstTimer=null;
+    const arrivals=entryBurstNames.splice(0);
+    if(arrivals.length===1)queueEntrance(arrivals[0]);
+  },1100);
+}
+// Đi từ lối vào ở phía trước camera tới vị trí đứng trên sàn.
+function queueEntrance(name) {
+  const d = dancers.find(d => d.name.toLowerCase() === name.toLowerCase());
+  if (!d || d.entering || entranceQueue.includes(d) || activeEntrance?.d === d) return;
+  d.entering = true;
+  d.startX = Math.max(-2.1,Math.min(2.1,d.targetX));
+  d.startZ = 10.6;
+  d.mesh.position.set(d.startX,0,d.startZ);
+  entranceQueue.push(d);
+}
+function setGuestDj(name){
+  const next=String(name||'').trim();
+  if(next && !dancers.some(d=>d.name.toLowerCase()===next.toLowerCase()))return;
+  if(guestDjName.toLowerCase()===next.toLowerCase())return;
+  const old=dancers.find(d=>d.name.toLowerCase()===guestDjName.toLowerCase());
+  if(old){guestDjTravel={d:old,elapsed:0,returning:true,start:old.mesh.position.clone()};}
+  guestDjName=next;
+  if(next){
+    const d=dancers.find(d=>d.name.toLowerCase()===next.toLowerCase());
+    if(d){d.entering=false;entranceQueue=entranceQueue.filter(x=>x!==d);if(activeEntrance?.d===d)activeEntrance=null;
+      guestDjTravel={d,elapsed:0,returning:false,start:d.mesh.position.clone()};}
+  }
+}
+function updateGuestDj(dt){
+  if(!guestDjTravel)return;
+  const g=guestDjTravel,d=g.d;
+  if(!dancers.includes(d)){guestDjTravel=null;return;}
+  g.elapsed+=dt;
+  // Đi vòng qua cạnh phải bục DJ, bước lên sân khấu rồi đứng nhảy cạnh DJ.
+  const points=g.returning?
+    [g.start,new THREE.Vector3(3.3,djPlatformHeight,-5.0),new THREE.Vector3(3.3,0,-4.1),new THREE.Vector3(d.targetX,0,d.targetZ)]:
+    [g.start,new THREE.Vector3(3.3,0,-4.1),new THREE.Vector3(3.3,djPlatformHeight,-5.0),new THREE.Vector3(2.0,djPlatformHeight,-6.85)];
+  const progress=Math.min(1,g.elapsed/4.5)*3;
+  const i=Math.min(2,Math.floor(progress)),alpha=progress-i;
+  d.mesh.position.copy(points[i]).lerp(points[i+1],alpha);
+  d.mesh.rotation.y=Math.PI;
+  if(progress>=3){guestDjTravel=null;if(g.returning)d.mesh.position.set(d.targetX,0,d.targetZ);}
+}
+function updateEntrance(dt,t) {
+  if (!activeEntrance && entranceQueue.length) {
+    const d=entranceQueue.shift();
+    if (dancers.includes(d)) activeEntrance={d,elapsed:0};
+  }
+  const a=activeEntrance;
+  if (!a) return;
+  if (!dancers.includes(a.d)) {activeEntrance=null;return;}
+  a.elapsed += dt;
+  const walk=Math.min(1,a.elapsed/3.4);
+  const smooth=walk*walk*(3-2*walk);
+  const d=a.d;
+  d.mesh.position.x=d.startX+(d.targetX-d.startX)*smooth;
+  d.mesh.position.z=d.startZ+(d.targetZ-d.startZ)*smooth;
+  d.mesh.rotation.y=Math.PI;
+  if(a.elapsed>=5.5) {
+    d.entering=false;
+    d.mesh.position.set(d.targetX,0,d.targetZ);
+    activeEntrance=null;
+  }
+}
+function updateEntranceCamera(dt,t) {
+  if (!camera || !cameraHome) return;
+  const a=performance.now()<entryBurstNoZoomUntil ? null : activeEntrance;
+  const home=cameraHome;
+  if (a) {
+    const d=a.d, elapsed=a.elapsed;
+    const inWeight=Math.min(1,elapsed/0.9);
+    const outWeight=Math.min(1,Math.max(0,(5.5-elapsed)/1.5));
+    const weight=inWeight*outWeight;
+    // Camera tiến nhẹ về nhân vật, tránh zoom quá sát trên màn hình dọc.
+    const follow=new THREE.Vector3(d.mesh.position.x*0.70,3.5,Math.min(15.5,d.mesh.position.z+5.5));
+    const wanted=home.clone().lerp(follow,weight*0.90);
+    camera.position.lerp(wanted,Math.min(1,dt*5));
+    entranceCameraTarget.set(d.mesh.position.x,1.15,d.mesh.position.z);
+    entranceCameraTarget.lerp(new THREE.Vector3(0,2,-2.5),1-weight);
+    camera.lookAt(entranceCameraTarget);
+  } else {
+    camera.position.lerp(home,Math.min(1,dt*3.5));
+    camera.lookAt(0,2,-2.5);
+  }
+}
 
-        if (dj) animateChar(dj, dt, 0.45);
-        if (djOperator) {
-          // Nhảy theo beat: bật cao, lắc người, giơ hai tay và vẫy liên tục.
-          const beat = t * 8.4;
-          const jump = Math.pow(Math.max(0, Math.sin(beat)), 1.35);
-          djOperator.position.y = djPlatformHeight + 1.12 + jump * 0.38;
-          djOperator.position.x = Math.sin(t * 2.3) * 0.3;
-          djOperator.rotation.z = Math.sin(t * 4.1) * 0.14;
-          djOperator.rotation.y = Math.sin(t * 2.6) * 0.22;
-          const l = djOperator.userData.leftArm,
-            r = djOperator.userData.rightArm;
-          if (l) {
-            l.rotation.z = -1.85 + Math.sin(t * 9.2) * 0.45;
-            l.rotation.x = Math.sin(t * 7.1) * 0.4;
-          }
-          if (r) {
-            r.rotation.z = 1.85 - Math.sin(t * 9.2 + 1.7) * 0.45;
-            r.rotation.x = Math.sin(t * 7.6 + 1.1) * 0.4;
-          }
-        }
-        // LED cổng phát sáng theo nhịp; Equalizer chạy độc lập hai bên DJ.
-        djPortalRings.forEach((ring, i) => {
-          ring.mesh.material.opacity =
-            0.38 + 0.57 * (0.5 + 0.5 * Math.sin(lt * 3.8 - ring.phase));
-        });
-        djEqualizerBars.forEach((bar, i) => {
-          const beat = Math.abs(
-            Math.sin(t * 4.8 + bar.phase) *
-              Math.cos(t * 1.65 + bar.phase * 0.5),
-          );
-          const h = 0.3 + beat * 2.05;
-          bar.mesh.scale.y = h / 0.48;
-          bar.mesh.position.y = bar.base + h / 2;
-          bar.mesh.material.color.setHex(
-            [0xff39b8, 0x00eaff, 0xa96aff, 0xffd65c][
-              Math.floor(t * 1.9 + i / 3) % 4
-            ],
-          );
-        });
-        updateEntrance(dt, t);
-        updateGuestDj(dt);
-        dancers.forEach((d) => {
-          if (d.entering || (guestDjTravel && guestDjTravel.d === d)) {
-            const ud = d.avatar.userData;
-            ud.phase += dt * 11;
-            const stride = Math.sin(ud.phase);
-            d.avatar.position.y = Math.abs(stride) * 0.055;
-            ud.legL.rotation.x = stride * 0.52;
-            ud.legR.rotation.x = -stride * 0.52;
-            ud.armL.rotation.x = -stride * 0.38;
-            ud.armR.rotation.x = stride * 0.38;
-            ud.armL.rotation.z = 0.25;
-            ud.armR.rotation.z = -0.25;
-          } else if (d.name.toLowerCase() === guestDjName.toLowerCase()) {
-            animateChar(d.avatar, dt, 1.55);
-            d.mesh.position.x = 2.0 + Math.sin(t * 2.6) * 0.16;
-            d.mesh.position.y = djPlatformHeight;
-            d.mesh.position.z = -6.85;
-            d.mesh.rotation.y = Math.sin(t * 2.1) * 0.2;
-          } else animateChar(d.avatar, dt, 1);
-        });
+function processJoinQueue() {
+  if (joinShowing || !joinQueue.length) return;
+  joinShowing = true;
+  const name = joinQueue.shift();
+  const nameEl = document.getElementById('jt-name');
+  if (nameEl) nameEl.textContent = name;
+  const el = document.getElementById('join-toast');
+  if (el) el.classList.add('show');
+  speakJoin(name);
+  setTimeout(() => {
+    if (el) el.classList.remove('show');
+    setTimeout(() => { joinShowing = false; processJoinQueue(); }, 300);
+  }, 3500);
+}
 
-        if (discoBall) {
-          discoBall.rotation.y = lt * 2.35;
-          discoBall.rotation.x = Math.sin(lt * 0.85) * 0.12;
-        }
-        // Những chấm sáng quét qua sàn khi quả cầu quay; tia sáng luôn bắt đầu từ quả cầu.
-        discoRays.forEach((r, i) => {
-          const a = r.phase + lt * 1.35;
-          const radius = 3.5 + (i % 3) * 1.35;
-          const dest = new THREE.Vector3(
-            Math.cos(a) * radius,
-            0.085,
-            Math.sin(a) * radius,
-          );
-          // Bắt đầu ở bề mặt gương thay vì cùng một điểm giữa quả cầu.
-          const surface = r.origin
-            .clone()
-            .add(
-              new THREE.Vector3(Math.cos(a) * 0.49, -0.2, Math.sin(a) * 0.49),
-            );
-          const direction = dest.clone().sub(surface);
-          r.ray.position.copy(surface).add(dest).multiplyScalar(0.5);
-          r.ray.quaternion.setFromUnitVectors(
-            new THREE.Vector3(0, 1, 0),
-            direction.clone().normalize(),
-          );
-          r.ray.scale.y = direction.length();
-          r.ray.material.opacity =
-            0.022 + 0.035 * (0.5 + 0.5 * Math.sin(lt * 2.8 + i));
-          r.spot.position.copy(dest);
-          r.spot.material.opacity =
-            0.13 + 0.22 * (0.5 + 0.5 * Math.sin(lt * 2.2 + i));
-        });
-        discoSpots.forEach((s, i) => {
-          const ang = s.angle + lt * 1.35;
-          s.light.position.set(
-            Math.cos(ang) * 4.8,
-            3.6 + Math.sin(lt * 2 + i) * 0.9,
-            Math.sin(ang) * 4.8,
-          );
-          s.light.intensity = 0.35 + Math.sin(lt * 0.85 + i) * 0.12;
-        });
-        // Chữ bài hát chạy ngay trên tường DJ, không có banner nổi trên màn hình.
-        if (
-          wallSongCanvas &&
-          wallSongTexture &&
-          t - lastWallSongFrame > 0.045
-        ) {
-          lastWallSongFrame = t;
-          const ctx = wallSongCanvas.getContext("2d");
-          ctx.fillStyle = "#08080d";
-          ctx.fillRect(0, 0, 1024, 160);
-          ctx.fillStyle = "#15151e";
-          ctx.fillRect(0, 0, 1024, 3);
-          ctx.font = "bold 82px Arial, sans-serif";
-          ctx.textBaseline = "middle";
-          ctx.shadowColor = "#ff66cc";
-          ctx.shadowBlur = 17;
-          ctx.fillStyle = "#ff66cc";
-          const label = "♫  " + wallSongTitle + "     ✦     ";
-          const labelWidth = Math.max(1, ctx.measureText(label).width);
-          const shift = (t * 95) % labelWidth;
-          for (
-            let x = -shift - labelWidth;
-            x < 1024 + labelWidth;
-            x += labelWidth
-          )
-            ctx.fillText(label, x, 84);
-          ctx.shadowBlur = 0;
-          wallSongTexture.needsUpdate = true;
-        }
-        ceilingBeams.forEach((b, i) => {
-          const pulse = 0.5 + 0.5 * Math.sin(lt * 6.0 + b.phase);
-          const dx = Math.sin(lt * 4.8 + b.angle) * 0.62;
-          const dz = Math.cos(lt * 4.2 + b.angle) * 0.62;
-          const end = new THREE.Vector3(b.targetX + dx, 0.1, b.targetZ + dz);
-          const begin = new THREE.Vector3(b.x, b.y, b.z);
-          const vec = new THREE.Vector3().subVectors(end, begin);
-          b.beam.position.copy(begin).add(end).multiplyScalar(0.5);
-          b.beam.quaternion.setFromUnitVectors(
-            new THREE.Vector3(0, 1, 0),
-            vec.normalize(),
-          );
-          b.beam.material.opacity = 0.12 + pulse * 0.17;
-          b.glow.position.set(end.x, 0.065, end.z);
-          b.glow.material.opacity = 0.07 + pulse * 0.14;
-          b.glow.scale.setScalar(0.85 + pulse * 0.12);
-          b.lens.material.opacity = 0.6 + pulse * 0.18;
-        });
-        wallBars.forEach((q) => {
-          q.mesh.material.opacity =
-            0.22 + 0.19 * Math.max(0, Math.sin(lt * 3.4 + q.phase));
-        });
-        spotLights.forEach((s, i) => {
-          const blink = 0.5 + 0.5 * Math.sin(lt * 0.85 + s.phase);
-          s.light.intensity = 0.3 + blink * 0.25;
-          s.lens.material.color.setHSL(0.12, 1, 0.5 + blink * 0.28);
-        });
-        const beat = 0.5 + 0.5 * Math.sin(lt * 0.7);
-        neonMeshes.forEach((n, i) => {
-          if (!n.mesh || !n.color) return;
-          const hsl = {};
-          n.color.getHSL(hsl);
-          n.mesh.material.color.setHSL(
-            (hsl.h + lt * 0.012 + i * 0.04) % 1,
-            0.85,
-            0.46 + beat * 0.09,
-          );
-        });
-        floorTiles.forEach((t2) => {
-          t2.mesh.material.opacity =
-            0.24 + 0.6 * Math.max(0, Math.sin(lt * 2.25 + t2.phase * 0.5));
-        });
-        if (centerGlow) centerGlow.material.opacity = 0.12 + beat * 0.1;
-        if (deckL) deckL.rotation.y = t * 1.8;
-        if (deckR) deckR.rotation.y = -t * 2.0;
-        djLedRings.forEach((r, i) => {
-          r.mesh.material.opacity =
-            0.62 + 0.38 * (0.5 + 0.5 * Math.sin(lt * 4.6 + r.phase));
-          r.mesh.rotation.z = lt * (i % 2 ? 2.2 : -2.5);
-        });
-        djLedDots.forEach((d, i) => {
-          d.mesh.visible = Math.sin(lt * 7.2 + d.phase) > -0.22;
-        });
-        djConsoleLights.forEach((d, i) => {
-          d.mesh.material.color.setHex(
-            Math.sin(lt * 5.5 + d.phase) > 0 ? 0xff66cc : 0x00eaff,
-          );
-        });
+// Nhạc nhận từ Admin. Mỗi trình duyệt tự phát âm thanh trên thiết bị của mình.
+let currentMusicUrl = '';
+let currentMusicRevision = -1;
+let soundcloudWidget = null;
+let soundcloudReady = false;
+let soundcloudPendingPlay = false;
+let soundcloudScriptPromise = null;
+function loadSoundCloudApi() {
+  if (window.SC && window.SC.Widget) return Promise.resolve(true);
+  if (soundcloudScriptPromise) return soundcloudScriptPromise;
+  soundcloudScriptPromise = new Promise(resolve => {
+    const script=document.createElement('script');
+    script.src='https://w.soundcloud.com/player/api.js';
+    script.onload=()=>resolve(!!(window.SC && window.SC.Widget));
+    script.onerror=()=>resolve(false);
+    document.head.appendChild(script);
+  });
+  return soundcloudScriptPromise;
+}
+async function initSoundCloudWidget(frame) {
+  soundcloudWidget=null; soundcloudReady=false;
+  if (!await loadSoundCloudApi() || !frame.isConnected || frame.style.display==='none') {
+    document.getElementById('stage-music-label').textContent='Không tải được SoundCloud API. Hãy bấm ▶ trong trình phát.';
+    return;
+  }
+  const widget=window.SC.Widget(frame);
+  soundcloudWidget=widget;
+  widget.bind(window.SC.Widget.Events.READY,()=>{
+    if (soundcloudWidget!==widget)return;
+    soundcloudReady=true;
+    if(soundcloudPendingPlay) { try { widget.play(); } catch(e) {} }
+  });
+  widget.bind(window.SC.Widget.Events.PLAY,()=>{
+    if(soundcloudWidget!==widget)return;
+    soundcloudPendingPlay=false;
+    document.getElementById('btn-music').textContent='Nhạc đang phát ♪';
+    document.getElementById('stage-music-label').textContent='SoundCloud đang phát';
+  });
+  widget.bind(window.SC.Widget.Events.PAUSE,()=>{
+    if(soundcloudWidget!==widget)return;
+    document.getElementById('btn-music').textContent='Bật nhạc ▶';
+  });
+}
+function playSoundCloud() {
+  soundcloudPendingPlay=true;
+  if(soundcloudWidget && soundcloudReady) {
+    try {soundcloudWidget.play();}catch(e){}
+  }
+  document.getElementById('stage-music').style.display='block';
+  document.getElementById('stage-music-label').textContent='Đang yêu cầu SoundCloud phát. Nếu bị chặn tự động, bấm ▶ trong khung nhạc.';
+}
 
-        // Theo chân người mới vào, sau đó trở lại toàn cảnh.
-        updateEntranceCamera(dt, t);
-        renderer.render(scene, camera);
-      }
-    </script>
-  </body>
+function duckStageMusic(duck) {
+  // Tạm ngắt nhạc trong lúc đọc để tránh lấn giọng, sau đó khôi phục.
+  const audio = document.getElementById('stage-audio');
+  if (audio) audio.volume = duck ? 0.08 : 0.65;
+  const frame = document.getElementById('stage-frame');
+  if (frame && frame.src.includes('youtube.com/embed/')) {
+    try { frame.contentWindow.postMessage(JSON.stringify({event:'command',func:'setVolume',args:[duck ? 8 : 65]}), '*'); } catch(e) {}
+  }
+}
+
+function parseStageMusic(url) {
+  try {
+    const u = new URL(url);
+    if (u.protocol !== 'https:' && u.protocol !== 'http:') return null;
+    const host = u.hostname.toLowerCase();
+    let id = '';
+    if (host === 'youtu.be' || host === 'www.youtu.be') id = u.pathname.split('/')[1] || '';
+    else if (['youtube.com','www.youtube.com','m.youtube.com','youtube-nocookie.com','www.youtube-nocookie.com'].includes(host)) {
+      if (u.pathname === '/watch') id = u.searchParams.get('v') || '';
+      else if (/^\/(embed|live|shorts)\//.test(u.pathname)) id = u.pathname.split('/')[2] || '';
+    }
+    if (/^[\w-]{11}$/.test(id)) return {type:'iframe',src:'https://www.youtube.com/embed/'+id+'?autoplay=1&playsinline=1&enablejsapi=1&loop=1&playlist='+id};
+    if (host === 'soundcloud.com' || host.endsWith('.soundcloud.com')) return {type:'soundcloud',src:'https://w.soundcloud.com/player/?url='+encodeURIComponent(u.href)+'&auto_play=false&show_artwork=false&visual=false'};
+    if (/\.(mp3|ogg|wav|m4a)(?:$|\?)/i.test(u.pathname+u.search)) return {type:'audio',src:u.href};
+  } catch(e) {}
+  return null;
+}
+function stopStageMusic() {
+  const audio = document.getElementById('stage-audio');
+  const frame = document.getElementById('stage-frame');
+  audio.pause(); audio.removeAttribute('src'); audio.load();
+  soundcloudWidget=null; soundcloudReady=false; soundcloudPendingPlay=false;
+  frame.src='about:blank';
+  audio.style.display='none'; frame.style.display='none';
+  document.getElementById('stage-music').style.display='none';
+  document.getElementById('btn-music').textContent='Bật nhạc ▶';
+}
+function setStageMusic(url, revision) {
+  if (revision !== undefined && revision < currentMusicRevision) return;
+  if (revision !== undefined) currentMusicRevision = revision;
+  if (url === currentMusicUrl) return;
+  currentMusicUrl = url || '';
+  stopStageMusic();
+  if (!currentMusicUrl) return;
+  const p = parseStageMusic(currentMusicUrl);
+  const box = document.getElementById('stage-music');
+  const label = document.getElementById('stage-music-label');
+  box.style.display='block';
+  if (!p) {
+    label.textContent='Link chưa hỗ trợ. Dùng YouTube, SoundCloud hoặc URL MP3 trực tiếp.';
+    return;
+  }
+  label.textContent='Nhạc sân khấu — nếu chưa nghe thấy, bấm ▶ bên dưới';
+  if (p.type === 'audio') {
+    const audio = document.getElementById('stage-audio');
+    audio.style.display='block'; audio.src=p.src; audio.loop=true; audio.volume=0.65;
+    audio.play().then(()=>{document.getElementById('btn-music').textContent='Nhạc đang phát ♪';})
+      .catch(()=>{label.textContent='Trình duyệt chặn tự phát — bấm Bật nhạc hoặc ▶';});
+  } else {
+    const frame=document.getElementById('stage-frame');
+    frame.style.display='block'; frame.src=p.src;
+    if(p.type==='soundcloud'){
+      label.textContent='SoundCloud: bấm Bật nhạc ▶ hoặc ▶ trong khung nếu trình duyệt chặn autoplay';
+      soundcloudPendingPlay=false;
+      initSoundCloudWidget(frame);
+    } else {
+      label.textContent='YouTube: nếu bị chặn tự phát, bấm ▶ trong khung bên dưới';
+    }
+  }
+}
+document.getElementById('btn-music').addEventListener('click', () => {
+  const audio=document.getElementById('stage-audio');
+  if (audio.src && audio.style.display !== 'none') {
+    audio.play().then(()=>{document.getElementById('btn-music').textContent='Nhạc đang phát ♪';})
+      .catch(()=>{document.getElementById('stage-music-label').textContent='Không phát được file. Kiểm tra link MP3/CORS.';});
+  } else if (currentMusicUrl) {
+    const p=parseStageMusic(currentMusicUrl);
+    if(p && p.type==='soundcloud') {
+      playSoundCloud();
+    } else if(p && p.type==='iframe') {
+      document.getElementById('stage-frame').src=p.src;
+      document.getElementById('stage-music').style.display='block';
+    }
+  }
+});
+
+function applyState(st) {
+  if(st.nameFrames && typeof st.nameFrames==='object'){nameFrames=st.nameFrames;updateNameplates();}
+  if (typeof st.ttsKey === 'string') setTtsKey(st.ttsKey);
+  if (st.song) setSong(st.song);
+  if (typeof st.djLabel === 'string') setDjLabel(st.djLabel);
+  if (typeof st.musicUrl === 'string') setStageMusic(st.musicUrl, st.musicRevision);
+  if (Array.isArray(st.names)) {
+    const incoming = st.names.map(n => String(n).trim()).filter(Boolean);
+    const newOnes = incoming.filter(n => !knownNames.has(n.toLowerCase()));
+    allNames = incoming.slice(0, MAX_TOTAL);
+    knownNames = new Set(allNames.map(n => n.toLowerCase()));
+    rebuildVisual();
+    newOnes.slice(-3).forEach(n => showJoinToast(n));
+    if(typeof st.guestDjName==='string')setGuestDj(st.guestDjName);
+  }
+}
+
+function setDjLabel(value) {
+  if (!djSignCanvas || !djSignTexture) return;
+  const ctx = djSignCanvas.getContext('2d');
+  const text = String(value || 'DJ BAR LIVE').trim().slice(0, 38);
+  ctx.clearRect(0,0,1024,256);
+  ctx.fillStyle = '#100b25'; ctx.fillRect(0,0,1024,256);
+  ctx.strokeStyle = '#00eaff'; ctx.lineWidth = 11; ctx.strokeRect(8,8,1008,240);
+  ctx.shadowColor = '#ff3ed1'; ctx.shadowBlur = 24;
+  ctx.fillStyle = '#fff2ff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  let size = 112;
+  do {ctx.font = '900 '+size+'px Arial, sans-serif'; size -= 4;} while(ctx.measureText(text).width > 930 && size > 36);
+  ctx.fillText(text,512,132);
+  ctx.shadowBlur=0;
+  djSignTexture.needsUpdate=true;
+}
+
+function setSong(title) {
+  const songTitle = (title || 'FUNK PULSE').toUpperCase();
+  const text = '♪ ' + songTitle + '  ·  ';
+  document.getElementById('led1').textContent = text;
+  document.getElementById('led2').textContent = text;
+  wallSongTitle = songTitle;
+}
+
+function handleMsg(data) {
+  if (!data || !data.type) return;
+  if (data.type === 'config') setTtsKey(data.ttsKey);
+  if (data.type === 'state') applyState(data);
+  if (data.type === 'song') setSong(data.title);
+  if (data.type === 'guest-dj') setGuestDj(data.name);
+  if(data.type==='name-frames' && data.frames && typeof data.frames==='object'){nameFrames=data.frames;updateNameplates();}
+  if (data.type === 'dj-label') setDjLabel(data.text);
+  if (data.type === 'music') setStageMusic(data.url, data.revision);
+  if (data.type === 'music-stop') setStageMusic('', data.revision);
+  if (data.type === 'add') {
+    const name = (data.name || '').trim();
+    if (!name) return;
+    if (!knownNames.has(name.toLowerCase()) && allNames.length < MAX_TOTAL) {
+      allNames.push(name);
+      knownNames.add(name.toLowerCase());
+      rebuildVisual();
+    }
+    showJoinToast(name);
+  }
+  if (data.type === 'remove') {
+    const key = (data.name || '').toLowerCase();
+    allNames = allNames.filter(n => n.toLowerCase() !== key);
+    knownNames.delete(key);
+    rebuildVisual();
+  }
+  if (data.type === 'clear') {
+    allNames = []; knownNames.clear(); guestDjName="";guestDjTravel=null; rebuildVisual();
+  }
+}
+
+function connectRoom(code) {
+  code = (code || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (code.length < 4) {
+    document.getElementById('join-msg').textContent = 'Mã phòng không hợp lệ';
+    return;
+  }
+  document.getElementById('join-msg').textContent = 'Đang kết nối...';
+  document.getElementById('btn-join').disabled = true;
+  document.getElementById('room-input').blur();
+
+  if (peer) { try { peer.destroy(); } catch (e) {} }
+  peer = new Peer({
+    debug: 0,
+    config: {
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:global.stun.twilio.com:3478' }
+      ]
+    }
+  });
+
+  const fail = (msg) => {
+    document.getElementById('join-msg').textContent = msg || 'Không kết nối được. Kiểm tra mã phòng.';
+    document.getElementById('btn-join').disabled = false;
+    setConnUI('Lỗi kết nối', false);
+  };
+
+  peer.on('open', () => {
+    conn = peer.connect('djbar-' + code, { reliable: true });
+    const timeout = setTimeout(() => fail('Hết thời gian chờ. Kiểm tra mã / Admin còn mở không?'), 12000);
+
+    conn.on('open', () => {
+      clearTimeout(timeout);
+      showStageUI();
+      setConnUI('Đã kết nối', true);
+      if (!started) { started = true; initScene(); }
+      try { conn.send({ type: 'hello' }); } catch (e) {}
+      try { localStorage.setItem('djbar_stage_room', code); } catch (e) {}
+    });
+    conn.on('data', handleMsg);
+    conn.on('close', () => setConnUI('Mất kết nối', false));
+    conn.on('error', () => { clearTimeout(timeout); fail(); });
+  });
+
+  peer.on('error', err => {
+    console.warn(err);
+    fail('Lỗi mạng hoặc mã phòng sai');
+  });
+}
+
+document.getElementById('btn-join').onclick = () => {
+  unlockSpeech();
+  connectRoom(document.getElementById('room-input').value);
+};
+document.getElementById('room-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    unlockSpeech();
+    connectRoom(document.getElementById('room-input').value);
+  }
+});
+// Auto uppercase
+document.getElementById('room-input').addEventListener('input', e => {
+  const el = e.target;
+  const s = el.selectionStart;
+  el.value = el.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  el.setSelectionRange(s, s);
+});
+
+try {
+  const last = localStorage.getItem('djbar_stage_room');
+  if (last) document.getElementById('room-input').value = last;
+} catch (e) {}
+
+if (window.speechSynthesis) {
+  refreshVoices();
+  window.speechSynthesis.onvoiceschanged = () => refreshVoices();
+}
+
+const btnSound = document.getElementById('btn-sound');
+if (btnSound) {
+  btnSound.addEventListener('click', async () => {
+    btnSound.textContent = 'Đang bật...';
+    speechReady = true;
+    unlockSpeech();
+    await new Promise(r => setTimeout(r, 800));
+    await speakVietnamese('Đã bật tiếng Việt');
+    btnSound.textContent = 'Đã bật 🔊';
+    btnSound.classList.add('on');
+  });
+}
+
+function animateChar(char, dt, energy = 1) {
+  const ud = char.userData;
+  ud.phase += dt * (11 * energy);
+  const ph = ud.phase;
+  char.position.y = Math.abs(Math.sin(ph)) * 0.12 * energy;
+  ud.armL.rotation.z = 0.3 + Math.sin(ph) * 1.0 * energy;
+  ud.armR.rotation.z = -0.3 - Math.sin(ph + 1.1) * 1.0 * energy;
+  ud.legL.rotation.x = Math.sin(ph) * 0.4 * energy;
+  ud.legR.rotation.x = -Math.sin(ph) * 0.4 * energy;
+  ud.body.rotation.z = Math.sin(ph * 0.5) * 0.06 * energy;
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  if (!renderer || !scene) return;
+  const dt = Math.min(clock.getDelta(), 0.05);
+  const t = clock.elapsedTime;
+
+  if (dj) animateChar(dj, dt, 0.45);
+  if (djOperator) {
+    // Nhảy theo beat: bật cao, lắc người, giơ hai tay và vẫy liên tục.
+    const beat = t * 8.4;
+    const jump = Math.pow(Math.max(0, Math.sin(beat)), 1.35);
+    djOperator.position.y = djPlatformHeight + 1.12 + jump * 0.38;
+    djOperator.position.x = Math.sin(t * 2.3) * 0.30;
+    djOperator.rotation.z = Math.sin(t * 4.1) * 0.14;
+    djOperator.rotation.y = Math.sin(t * 2.6) * 0.22;
+    const l = djOperator.userData.leftArm, r = djOperator.userData.rightArm;
+    if (l) { l.rotation.z = -1.85 + Math.sin(t * 9.2) * 0.45; l.rotation.x = Math.sin(t * 7.1) * 0.40; }
+    if (r) { r.rotation.z = 1.85 - Math.sin(t * 9.2 + 1.7) * 0.45; r.rotation.x = Math.sin(t * 7.6 + 1.1) * 0.40; }
+  }
+  // LED cổng phát sáng theo nhịp; Equalizer chạy độc lập hai bên DJ.
+  djPortalRings.forEach((ring,i) => {
+    ring.mesh.material.opacity=0.38+0.57*(0.5+0.5*Math.sin(t*3.8-ring.phase));
+  });
+  djEqualizerBars.forEach((bar,i) => {
+    const beat = Math.abs(Math.sin(t*4.8+bar.phase)*Math.cos(t*1.65+bar.phase*0.5));
+    const h=0.30+beat*2.05;
+    bar.mesh.scale.y=h/0.48;
+    bar.mesh.position.y=bar.base+h/2;
+    bar.mesh.material.color.setHex([0xff39b8,0x00eaff,0xa96aff,0xffd65c][Math.floor(t*1.9+i/3)%4]);
+  });
+  updateEntrance(dt,t);
+  updateGuestDj(dt);
+  dancers.forEach(d => {
+    if(d.entering || (guestDjTravel && guestDjTravel.d===d)) {
+      const ud=d.avatar.userData;
+      ud.phase+=dt*11;
+      const stride=Math.sin(ud.phase);
+      d.avatar.position.y=Math.abs(stride)*0.055;
+      ud.legL.rotation.x=stride*0.52;
+      ud.legR.rotation.x=-stride*0.52;
+      ud.armL.rotation.x=-stride*0.38;
+      ud.armR.rotation.x=stride*0.38;
+      ud.armL.rotation.z=0.25;ud.armR.rotation.z=-0.25;
+    } else if(d.name.toLowerCase()===guestDjName.toLowerCase()) {
+      animateChar(d.avatar,dt,1.55);
+      d.mesh.position.x=2.0+Math.sin(t*2.6)*0.16;
+      d.mesh.position.y=djPlatformHeight;
+      d.mesh.position.z=-6.85;
+      d.mesh.rotation.y=Math.sin(t*2.1)*0.20;
+    } else animateChar(d.avatar,dt,1);
+  });
+
+  if (discoBall) {
+    discoBall.rotation.y = t * 2.35;
+    discoBall.rotation.x = Math.sin(t * 0.85) * 0.12;
+  }
+  // Những chấm sáng quét qua sàn khi quả cầu quay; tia sáng luôn bắt đầu từ quả cầu.
+  discoRays.forEach((r,i)=>{
+    const a=r.phase+t*1.35;
+    const radius=3.5+(i%3)*1.35;
+    const dest=new THREE.Vector3(Math.cos(a)*radius,0.085,Math.sin(a)*radius);
+    // Bắt đầu ở bề mặt gương thay vì cùng một điểm giữa quả cầu.
+    const surface=r.origin.clone().add(new THREE.Vector3(Math.cos(a)*0.49,-0.20,Math.sin(a)*0.49));
+    const direction=dest.clone().sub(surface);
+    r.ray.position.copy(surface).add(dest).multiplyScalar(0.5);
+    r.ray.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),direction.clone().normalize());
+    r.ray.scale.y=direction.length();
+    r.ray.material.opacity=0.022+0.035*(0.5+0.5*Math.sin(t*2.8+i));
+    r.spot.position.copy(dest);
+    r.spot.material.opacity=0.13+0.22*(0.5+0.5*Math.sin(t*2.2+i));
+  });
+  discoSpots.forEach((s, i) => {
+    const ang = s.angle + t * 1.35;
+    s.light.position.set(Math.cos(ang) * 4.8, 3.6 + Math.sin(t * 2 + i) * 0.9, Math.sin(ang) * 4.8);
+    s.light.intensity = 0.35 + Math.sin(t * 0.85 + i) * 0.12;
+  });
+  // Chữ bài hát chạy ngay trên tường DJ, không có banner nổi trên màn hình.
+  if (wallSongCanvas && wallSongTexture && t-lastWallSongFrame > 0.045) {
+    lastWallSongFrame = t;
+    const ctx = wallSongCanvas.getContext('2d');
+    ctx.fillStyle = '#08080d'; ctx.fillRect(0,0,1024,160);
+    ctx.fillStyle = '#15151e'; ctx.fillRect(0,0,1024,3);
+    ctx.font = 'bold 82px Arial, sans-serif';
+    ctx.textBaseline = 'middle';
+    ctx.shadowColor = '#ff66cc'; ctx.shadowBlur = 17;
+    ctx.fillStyle = '#ff66cc';
+    const label = '♫  ' + wallSongTitle + '     ✦     ';
+    const labelWidth = Math.max(1,ctx.measureText(label).width);
+    const shift = (t * 95) % labelWidth;
+    for (let x=-shift-labelWidth; x<1024+labelWidth; x+=labelWidth) ctx.fillText(label,x,84);
+    ctx.shadowBlur = 0;
+    wallSongTexture.needsUpdate = true;
+  }
+  ceilingBeams.forEach((b,i)=>{
+    const pulse=0.5+0.5*Math.sin(t*6.0+b.phase);
+    const dx=Math.sin(t*4.8+b.angle)*0.62;
+    const dz=Math.cos(t*4.2+b.angle)*0.62;
+    const end=new THREE.Vector3(b.targetX+dx,0.10,b.targetZ+dz);
+    const begin=new THREE.Vector3(b.x,b.y,b.z);
+    const vec=new THREE.Vector3().subVectors(end,begin);
+    b.beam.position.copy(begin).add(end).multiplyScalar(0.5);
+    b.beam.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),vec.normalize());
+    b.beam.material.opacity=0.12+pulse*0.17;
+    b.glow.position.set(end.x,0.065,end.z);
+    b.glow.material.opacity=0.07+pulse*0.14;
+    b.glow.scale.setScalar(0.85+pulse*0.12);
+    b.lens.material.opacity=0.60+pulse*0.18;
+  });
+  wallBars.forEach(q=>{
+    q.mesh.material.opacity=0.22+0.19*Math.max(0,Math.sin(t*3.4+q.phase));
+  });
+  spotLights.forEach((s, i) => {
+    const blink = 0.5 + 0.5 * Math.sin(t * 0.85 + s.phase);
+    s.light.intensity = 0.30 + blink * 0.25;
+    s.lens.material.color.setHSL(0.12, 1, 0.5 + blink * 0.28);
+  });
+  const beat = 0.5 + 0.5 * Math.sin(t * 0.70);
+  neonMeshes.forEach((n, i) => {
+    if (!n.mesh || !n.color) return;
+    const hsl = {}; n.color.getHSL(hsl);
+    n.mesh.material.color.setHSL((hsl.h + t * 0.012 + i * 0.04) % 1, 0.85, 0.46 + beat * 0.09);
+  });
+  floorTiles.forEach(t2 => {
+    t2.mesh.material.opacity = 0.24 + 0.60 * Math.max(0, Math.sin(t * 2.25 + t2.phase * 0.5));
+  });
+  if (centerGlow) centerGlow.material.opacity = 0.12 + beat * 0.10;
+  if (deckL) deckL.rotation.y = t * 1.8;
+  if (deckR) deckR.rotation.y = -t * 2.0;
+  djLedRings.forEach((r,i)=>{
+    r.mesh.material.opacity=0.62+0.38*(0.5+0.5*Math.sin(t*4.6+r.phase));
+    r.mesh.rotation.z=t*(i%2?2.2:-2.5);
+  });
+  djLedDots.forEach((d,i)=>{
+    d.mesh.visible=Math.sin(t*7.2+d.phase)>-0.22;
+  });
+  djConsoleLights.forEach((d,i)=>{
+    d.mesh.material.color.setHex(Math.sin(t*5.5+d.phase)>0?0xff66cc:0x00eaff);
+  });
+
+  // Theo chân người mới vào, sau đó trở lại toàn cảnh.
+  updateEntranceCamera(dt,t);
+  renderer.render(scene, camera);
+}
+</script>
+</body>
 </html>
