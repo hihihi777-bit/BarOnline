@@ -131,7 +131,7 @@ document.getElementById('btn-login').onclick = () => {
   const acc = accounts[user.toLowerCase()];
   if (!acc || acc.hash !== simpleHash(pass)) return showMsg('Sai tên đăng nhập hoặc mật khẩu');
   sessionStorage.setItem('djbar_admin', JSON.stringify({ user: acc.user, at: Date.now() }));
-  location.href = 'livebar.html';
+  location.href = 'admin.html';
 };
 
 // Enter key
@@ -147,7 +147,7 @@ document.getElementById('btn-login').onclick = () => {
 // Đã đăng nhập thì vào admin
 try {
   const s = JSON.parse(sessionStorage.getItem('djbar_admin') || 'null');
-  if (s && s.user && Date.now() - s.at < 86400000) location.href = 'livebar.html';
+  if (s && s.user && Date.now() - s.at < 86400000) location.href = 'admin.html';
 } catch {}
 </script>
 </body>
