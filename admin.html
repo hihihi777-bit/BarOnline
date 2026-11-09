@@ -127,10 +127,21 @@ input:focus{border-color:#b14dff}
   <div class="row" style="margin-top:12px">
     <input id="guest-dj-name" list="guest-dj-options" placeholder="Tên người đang ở dưới sàn..."/>
     <datalist id="guest-dj-options"></datalist>
-    <button class="btn btn-add" id="btn-dance-dj">🎧 Lên nhảy cùng DJ</button>
+    <select id="special-dance-style" style="flex:1;min-width:140px;padding:11px;border-radius:10px;background:#171a2b;color:#fff;border:1px solid #535875"><option value="shuffle">⚡ Shuffle</option><option value="robot">🤖 Robot</option><option value="disco">🪩 Disco</option><option value="hiphop">🔥 Hip-hop</option></select>
+    <button class="btn btn-add" id="btn-dance-dj">✨ Đổi điệu nhảy</button>
     <button class="btn btn-stop" id="btn-dance-return">Xuống sàn</button>
   </div>
-  <p class="hint" id="guest-dj-status">Chọn một người đã có trên sàn để mời lên bục DJ.</p>
+  <div class="row" style="margin-top:12px;align-items:center">
+    <button class="btn btn-add" id="btn-mc-toggle">🎤 Tắt MC tự động</button>
+    <span class="hint">MC chỉ hiện bong bóng chat 5 câu, không đọc thành tiếng; mặc định là MC.</span>
+  </div>
+  <div class="row" style="margin-top:12px;align-items:center">
+    <input id="mc-person-name" list="guest-dj-options" placeholder="Chọn người làm MC (đã ở trong sàn)..."/>
+    <button class="btn btn-add" id="btn-mc-assign">🎤 Cho làm MC</button>
+    <button class="btn btn-stop" id="btn-mc-default">MC mặc định</button>
+  </div>
+  <p class="hint" id="mc-person-status">MC mặc định đang đứng trên bục.</p>
+  <p class="hint" id="guest-dj-status">Chọn người và điệu nhảy để lên bục biểu diễn solo.</p>
   <div class="row" style="margin-top:12px">
     <input id="frame-name" list="guest-dj-options" placeholder="Tên người muốn gắn khung..."/>
     <select id="frame-style" style="flex:1;min-width:160px;padding:11px;border-radius:10px;background:#171a2b;color:white;border:1px solid #535875">
@@ -163,6 +174,9 @@ let ttsKey = '';
 try { ttsKey = localStorage.getItem('djbar_tts_key') || ''; } catch (e) {}
 let names = [];
 let guestDjName = '';
+let mcEnabled = true;
+let mcPersonName = '';
+let specialDanceStyle = 'shuffle';
 let nameFrames = {};
 try { nameFrames=JSON.parse(localStorage.getItem('djbar_name_frames')||'{}')||{}; } catch(e) {}
 let song = 'Funk Pulse';
@@ -197,7 +211,7 @@ function genCode() {
 }
 
 function getState() {
-  return { type: 'state', names: [...names], song, djLabel, ttsKey, musicUrl, musicRevision, guestDjName, nameFrames: {...nameFrames} };
+  return { type: 'state', names: [...names], song, djLabel, ttsKey, musicUrl, musicRevision, guestDjName, specialDanceStyle, mcEnabled, mcPersonName, nameFrames: {...nameFrames} };
 }
 
 function broadcast(msg) {
@@ -449,22 +463,49 @@ function inviteGuestDj(){
   const found=names.find(n=>n.toLocaleLowerCase('vi')===value.toLocaleLowerCase('vi'));
   const status=document.getElementById('guest-dj-status');
   if(!found){status.textContent='Tên này chưa có trên sàn. Hãy thêm người trước.';return;}
+  if(mcPersonName.toLocaleLowerCase('vi')===found.toLocaleLowerCase('vi'))resetMcPerson();
   guestDjName=found;
-  status.textContent=found+' đang đi lên sân khấu nhảy cùng DJ!';
-  broadcast({type:'guest-dj',name:found});pushState();
+  specialDanceStyle=document.getElementById('special-dance-style').value;
+  status.textContent=found+' đang lên bục biểu diễn điệu '+specialDanceStyle+'!';
+  broadcast({type:'guest-dj',name:found,style:specialDanceStyle});pushState();
 }
 function returnGuestDj(){
   guestDjName='';
   document.getElementById('guest-dj-status').textContent='Đã mời khách xuống lại sàn.';
-  broadcast({type:'guest-dj',name:''});pushState();
+  broadcast({type:'guest-dj',name:'',style:specialDanceStyle});pushState();
 }
 document.getElementById('btn-dance-dj').onclick=inviteGuestDj;
 document.getElementById('btn-dance-return').onclick=returnGuestDj;
+function assignMcPerson(){
+  const input=document.getElementById('mc-person-name');
+  const value=input.value.trim();
+  const found=names.find(n=>n.toLocaleLowerCase('vi')===value.toLocaleLowerCase('vi'));
+  const status=document.getElementById('mc-person-status');
+  if(!found){status.textContent='Người này chưa có trong sàn. Hãy thêm người trước.';return;}
+  if(guestDjName.toLocaleLowerCase('vi')===found.toLocaleLowerCase('vi')){
+    status.textContent='Người này đang đổi điệu nhảy. Hãy cho xuống sàn trước.';return;
+  }
+  mcPersonName=found;
+  status.textContent=found+' đang làm MC (chỉ hiện chữ, không phát tiếng).';
+  broadcast({type:'mc-person',name:found});pushState();
+}
+function resetMcPerson(){
+  mcPersonName='';
+  document.getElementById('mc-person-name').value='';
+  document.getElementById('mc-person-status').textContent='MC mặc định đang đứng trên bục.';
+  broadcast({type:'mc-person',name:''});pushState();
+}
+document.getElementById('btn-mc-assign').onclick=assignMcPerson;
+document.getElementById('btn-mc-default').onclick=resetMcPerson;
+document.getElementById('mc-person-name').addEventListener('keydown',e=>{if(e.key==='Enter')assignMcPerson();});
+document.getElementById('btn-mc-toggle').onclick=()=>{mcEnabled=!mcEnabled;document.getElementById('btn-mc-toggle').textContent=mcEnabled?'🎤 Tắt MC tự động':'🎤 Bật MC tự động';broadcast({type:'mc-toggle',enabled:mcEnabled});pushState();};
+document.getElementById('special-dance-style').onchange=()=>{specialDanceStyle=document.getElementById('special-dance-style').value;if(guestDjName){broadcast({type:'guest-dj',name:guestDjName,style:specialDanceStyle});pushState();}};
 document.getElementById('guest-dj-name').addEventListener('keydown',e=>{if(e.key==='Enter')inviteGuestDj();});
 function removeName(name) {
   names = names.filter(n => n.toLowerCase() !== name.toLowerCase());
   delete nameFrames[name.toLowerCase()];
   if(guestDjName.toLowerCase()===name.toLowerCase())returnGuestDj();
+  if(mcPersonName.toLowerCase()===name.toLowerCase())resetMcPerson();
   renderList();
   broadcast({ type: 'remove', name });
   pushState();
@@ -475,6 +516,7 @@ function clearAll() {
   nameFrames={};
   try{localStorage.removeItem('djbar_name_frames');}catch(e){}
   returnGuestDj();
+  resetMcPerson();
   renderList();
   broadcast({ type: 'clear' });
   pushState();
