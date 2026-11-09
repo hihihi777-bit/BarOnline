@@ -210,7 +210,7 @@ let wallSongCanvas = null, wallSongTexture = null, wallSongTitle = "FUNK PULSE",
 let joinQueue = [], joinShowing = false;
 let entranceQueue = [], activeEntrance = null;
 let entryBurstTimer = null, entryBurstNames = [], entryBurstNoZoomUntil = 0;
-let guestDjName = "", guestDjTravel = null;
+let guestDjName = "", guestDjTravel = null, danceZoomUntil = 0;
 let mcEnabled = true, mcAnchor = null, mcAvatar = null, mcBubble = null, mcBubbleCanvas = null, mcBubbleTexture = null, mcNameLabel = null;
 let mcPersonName = ''; // Giữ khung tên gốc khi khách được chọn làm MC
 let mcZoomUntil=0;
@@ -791,36 +791,48 @@ function createChar(colorHex, isDJ = false) {
 }
 
 function makeLabel(text, frame='none') {
-  const cv=document.createElement('canvas');cv.width=512;cv.height=128;
+  const cv=document.createElement('canvas');cv.width=768;cv.height=192;
   const ctx=cv.getContext('2d');
   const themes={
-    gold:['#ffcf54','#fff0a0','#8d5200','♛'],
-    neon:['#ff4dbd','#ffc2ed','#710b69','★'],
-    ice:['#55eaff','#d7ffff','#0c5980','◆'],
-    fire:['#ff713b','#ffe08c','#98221a','✦'],
-    galaxy:['#a56cff','#f1b9ff','#4e2299','✧']
+    gold:['#ffd36a','#fff4bd','#a87517','♛'],
+    neon:['#ff56cc','#ffe0f7','#9b36f7','✦'],
+    ice:['#4deaff','#e0ffff','#2689ff','◆'],
+    fire:['#ff7a42','#ffe2a1','#ff345c','✦'],
+    galaxy:['#a889ff','#f3ddff','#5634cf','✧']
   };
-  const theme=themes[frame],display=String(text).slice(0,22);
+  const th=themes[frame]||['#32e6f5','#ffffff','#5468ff','✧'];
+  const vip=Boolean(themes[frame]), name=String(text).slice(0,22);
+  const rr=(x,y,w,h,r)=>{ctx.beginPath();ctx.roundRect(x,y,w,h,r);};
+  ctx.clearRect(0,0,768,192);
+  // Layered translucent badge, soft neon halo, fine chrome edges.
+  ctx.shadowColor=th[0];ctx.shadowBlur=34;
+  const outer=ctx.createLinearGradient(40,20,720,180);
+  outer.addColorStop(0,th[0]);outer.addColorStop(.5,th[1]);outer.addColorStop(1,th[2]);
+  ctx.fillStyle='rgba(6,12,33,.94)';rr(25,28,718,138,35);ctx.fill();
+  ctx.shadowBlur=0;ctx.strokeStyle=outer;ctx.lineWidth=5;ctx.stroke();
+  ctx.strokeStyle='rgba(255,255,255,.25)';ctx.lineWidth=2;rr(35,38,698,118,29);ctx.stroke();
+  const bg=ctx.createLinearGradient(0,35,0,160);
+  bg.addColorStop(0,'rgba(255,255,255,.13)');bg.addColorStop(.35,'rgba(255,255,255,.035)');bg.addColorStop(1,'rgba(0,0,0,.15)');
+  ctx.fillStyle=bg;rr(38,41,692,112,26);ctx.fill();
+  // Top accent line and symmetric futuristic corner marks.
+  ctx.fillStyle=outer;rr(280,26,208,6,3);ctx.fill();
+  ctx.strokeStyle=th[0];ctx.lineWidth=4;
+  ctx.beginPath();ctx.moveTo(49,70);ctx.lineTo(49,57);ctx.lineTo(70,57);
+  ctx.moveTo(719,124);ctx.lineTo(719,137);ctx.lineTo(698,137);ctx.stroke();
   ctx.textAlign='center';ctx.textBaseline='middle';
-  if(theme){
-    const grad=ctx.createLinearGradient(0,0,512,128);
-    grad.addColorStop(0,theme[0]);grad.addColorStop(0.5,theme[1]);grad.addColorStop(1,theme[2]);
-    ctx.shadowColor=theme[0];ctx.shadowBlur=19;
-    ctx.fillStyle='rgba(7,9,26,0.93)';
-    ctx.beginPath();ctx.roundRect(14,14,484,100,25);ctx.fill();
-    ctx.strokeStyle=grad;ctx.lineWidth=7;ctx.stroke();ctx.shadowBlur=0;
-    ctx.fillStyle=theme[1];ctx.font='bold 34px system-ui,sans-serif';
-    ctx.fillText(theme[3]+' '+display+' '+theme[3],256,65,450);
-  }else{
-    ctx.font='bold 39px system-ui,sans-serif';
-    ctx.lineWidth=5;ctx.strokeStyle='rgba(0,0,0,0.75)';
-    ctx.strokeText(display,256,65,475);
-    ctx.fillStyle='#ffffff';ctx.fillText(display,256,65,475);
-  }
+  ctx.font='800 28px system-ui,sans-serif';
+  ctx.fillStyle=th[0];ctx.shadowColor=th[0];ctx.shadowBlur=12;
+  ctx.fillText(vip?'✦  '+frame.toUpperCase()+'  ✦':'✦  LIVE GUEST  ✦',384,65);
+  ctx.shadowBlur=0;
+  ctx.font='900 49px system-ui,sans-serif';
+  ctx.fillStyle='#ffffff';ctx.shadowColor=th[0];ctx.shadowBlur=10;
+  ctx.fillText(name,384,115,620);
+  ctx.shadowBlur=0;
   const tex=new THREE.CanvasTexture(cv);tex.minFilter=THREE.LinearFilter;
   const spr=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false}));
-  spr.scale.set(theme?2.05:1.65,theme?0.51:0.41,1);spr.position.y=1.85;
-  spr.userData.labelTexture=tex;return spr;
+  spr.scale.set(vip?2.35:2.05,vip?0.59:0.52,1);
+  spr.position.y=2.02;spr.userData.labelTexture=tex;
+  return spr;
 }
 function updateNameplates(){
   dancers.forEach(d=>{
@@ -849,7 +861,7 @@ function layoutVisual() {
       d.targetZ = d.mesh.position.z;
       if (d.entering) d.mesh.position.set(d.startX,0,d.startZ);
       if (d.pendingEntrance) d.mesh.visible=false;
-      if (d.name.toLowerCase()===guestDjName.toLowerCase() && !guestDjTravel) d.mesh.position.set(1.95,djPlatformHeight,-5.12);
+      // Người đổi điệu nhảy vẫn giữ vị trí trong sàn.
     }
   }
 }
@@ -1187,33 +1199,27 @@ function queueEntrance(name) {
   entranceQueue.push(d);
 }
 function setGuestDj(name,style){
-  if(['shuffle','robot','disco','hiphop'].includes(style)) specialDanceStyle=style;
+  const valid=['shuffle','robot','disco','hiphop'];
+  const newStyle=valid.includes(style)?style:specialDanceStyle;
   const next=String(name||'').trim();
   if(next && !dancers.some(d=>d.name.toLowerCase()===next.toLowerCase()))return;
-  if(guestDjName.toLowerCase()===next.toLowerCase())return;
-  const old=dancers.find(d=>d.name.toLowerCase()===guestDjName.toLowerCase());
-  if(old){guestDjTravel={d:old,elapsed:0,returning:true,start:old.mesh.position.clone()};}
+  const changed=guestDjName.toLowerCase()!==next.toLowerCase() || (next && newStyle!==specialDanceStyle);
   guestDjName=next;
+  specialDanceStyle=newStyle;
+  guestDjTravel=null; // Không di chuyển lên bục DJ nữa.
   if(next){
     const d=dancers.find(d=>d.name.toLowerCase()===next.toLowerCase());
-    if(d){d.pendingEntrance=false;d.mesh.visible=true;d.entering=false;entranceQueue=entranceQueue.filter(x=>x!==d);if(activeEntrance?.d===d)activeEntrance=null;
-      guestDjTravel={d,elapsed:0,returning:false,start:d.mesh.position.clone()};}
-  }
+    if(d){
+      d.pendingEntrance=false;d.entering=false;d.mesh.visible=true;
+      entranceQueue=entranceQueue.filter(x=>x!==d);
+      if(activeEntrance?.d===d)activeEntrance=null;
+      d.mesh.position.set(d.targetX??d.mesh.position.x,0,d.targetZ??d.mesh.position.z);
+      if(changed) danceZoomUntil=performance.now()+3000;
+    }
+  } else danceZoomUntil=0;
 }
 function updateGuestDj(dt){
-  if(!guestDjTravel)return;
-  const g=guestDjTravel,d=g.d;
-  if(!dancers.includes(d)){guestDjTravel=null;return;}
-  g.elapsed+=dt;
-  // Đi vòng qua cạnh phải bục DJ, bước lên sân khấu rồi đứng nhảy cạnh DJ.
-  const points=g.returning?
-    [g.start,new THREE.Vector3(3.3,djPlatformHeight,-5.0),new THREE.Vector3(3.3,0,-4.1),new THREE.Vector3(d.targetX,0,d.targetZ)]:
-    [g.start,new THREE.Vector3(3.3,0,-4.1),new THREE.Vector3(3.3,djPlatformHeight,-5.0),new THREE.Vector3(1.95,djPlatformHeight,-5.12)];
-  const progress=Math.min(1,g.elapsed/4.5)*3;
-  const i=Math.min(2,Math.floor(progress)),alpha=progress-i;
-  d.mesh.position.copy(points[i]).lerp(points[i+1],alpha);
-  d.mesh.rotation.y=Math.PI;
-  if(progress>=3){guestDjTravel=null;if(g.returning)d.mesh.position.set(d.targetX,0,d.targetZ);}
+  // Giữ người đổi điệu nhảy tại chỗ trong sàn.
 }
 function updateEntrance(dt,t) {
   if(!activeEntrance && entranceQueue.length && performance.now()>=entryBurstNoZoomUntil){
@@ -1254,8 +1260,17 @@ function updateEntranceCamera(dt,t){
     wanted=home.clone().lerp(follow,weight*0.94);
     look.lerp(new THREE.Vector3(d.mesh.position.x,1.15,d.mesh.position.z),weight);
   }
+  // Zoom vào người đổi điệu nhảy ngay trên sàn trong 3 giây.
+  if(!a && guestDjName && performance.now()<danceZoomUntil){
+    const dancer=dancers.find(d=>d.name.toLowerCase()===guestDjName.toLowerCase());
+    if(dancer && dancer.mesh.visible){
+      const pos=dancer.mesh.position;
+      wanted=new THREE.Vector3(pos.x*0.75,3.25,pos.z+5.6);
+      look.set(pos.x,1.35,pos.z);
+    }
+  }
   // Khi chọn người làm MC, camera zoom về bục MC trong vài giây rồi trả về toàn cảnh.
-  if(!a && mcEnabled && mcPersonName && performance.now()<mcZoomUntil){
+  if(!a && performance.now()>=danceZoomUntil && mcEnabled && mcPersonName && performance.now()<mcZoomUntil){
     wanted=new THREE.Vector3(-1.1,3.7,1.5);
     look.set(-2.10,djPlatformHeight+1.65,-5.40);
   }
@@ -1682,9 +1697,9 @@ function animate() {
       ud.armL.rotation.z=0.25;ud.armR.rotation.z=-0.25;
     } else if(d.name.toLowerCase()===guestDjName.toLowerCase()) {
       animateSpecialDance(d.avatar,dt,t,specialDanceStyle);
-      d.mesh.position.x=1.95+Math.sin(t*(specialDanceStyle==='shuffle'?5.8:2.6))*0.18;
-      d.mesh.position.y=djPlatformHeight;
-      d.mesh.position.z=-5.12;
+      d.mesh.position.x=d.targetX;
+      d.mesh.position.y=0;
+      d.mesh.position.z=d.targetZ;
       d.mesh.rotation.y=Math.sin(t*(specialDanceStyle==='disco'?3.2:2.1))*(specialDanceStyle==='disco'?0.55:0.20);
     } else animateChar(d.avatar,dt,1);
   });
