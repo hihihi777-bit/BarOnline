@@ -762,7 +762,8 @@ function rebuildVisual() {
       avatar.add(label);
       mesh.add(avatar);
       scene.add(mesh);
-      d = { mesh, avatar, name, label, frame:nameFrames[name.toLowerCase()]||'none' };
+      d = { mesh, avatar, name, label, frame:nameFrames[name.toLowerCase()]||'none', pendingEntrance:true };
+      mesh.visible=false; // New arrivals must never render on the dance floor before entrance scheduling.
     }
     next.push(d);
     previous.delete(name.toLowerCase());
@@ -1059,7 +1060,7 @@ function cancelAllEntrances() {
 function scheduleEntrance(name) {
   const now=performance.now();
   const d=dancers.find(d=>d.name.toLowerCase()===name.toLowerCase());
-  if (!d || d.entering || d.pendingEntrance || entranceQueue.includes(d) || activeEntrance?.d===d) return;
+  if (!d || d.entering || entranceQueue.includes(d) || activeEntrance?.d===d || entryBurstNames.some(n=>n.toLowerCase()===name.toLowerCase())) return;
   if(now < entryBurstNoZoomUntil){finishEntrance(d);return;}
   // Không render avatar tại vị trí sân khấu trong thời gian gom lượt.
   d.pendingEntrance=true;
@@ -1124,12 +1125,12 @@ function updateEntrance(dt,t) {
       activeEntrance={d,elapsed:0};
       // Đặt camera ở góc đón TRƯỚC khi nhân vật được render.
       const follow=new THREE.Vector3(d.startX*0.70,3.5,Math.min(15.5,d.startZ+5.5));
-      camera.position.copy(cameraHome).lerp(follow,0.90);
+      camera.position.copy(follow); // Cut to entrance before revealing avatar; never show the stage first.
       entranceCameraTarget.set(d.startX,1.15,d.startZ);
       camera.lookAt(entranceCameraTarget);
       d.mesh.position.set(d.startX,0,d.startZ);
-      d.mesh.visible=true;
       d.pendingEntrance=false;
+      d.mesh.visible=true;
     }
   }
   const a=activeEntrance;
@@ -1330,7 +1331,7 @@ function applyState(st) {
     allNames = incoming.slice(0, MAX_TOTAL);
     knownNames = new Set(allNames.map(n => n.toLowerCase()));
     rebuildVisual();
-    newOnes.slice(-3).forEach(n => showJoinToast(n));
+    newOnes.forEach(n => showJoinToast(n));
     if(typeof st.guestDjName==='string')setGuestDj(st.guestDjName);
   }
 }
