@@ -750,6 +750,18 @@ function layoutVisual() {
   }
 }
 
+// Stable, per-user outfit color. Does not depend on dancer ordering or batch size.
+function outfitColorForName(name) {
+  const key = String(name || '').normalize('NFC').toLowerCase();
+  let hash = 2166136261;
+  for (const char of key) {
+    hash ^= char.codePointAt(0);
+    hash = Math.imul(hash, 16777619);
+  }
+  const hue = ((hash >>> 0) * 0.618033988749895) % 1;
+  return new THREE.Color().setHSL(hue, 0.78, 0.60);
+}
+
 function rebuildVisual() {
   const previous = new Map(dancers.map(d => [d.name.toLowerCase(),d]));
   const next = [];
@@ -757,7 +769,7 @@ function rebuildVisual() {
     let d = previous.get(name.toLowerCase());
     if (!d) {
       const mesh = new THREE.Group();
-      const avatar = createChar(COLORS[i % COLORS.length]);
+      const avatar = createChar(outfitColorForName(name));
       const label=makeLabel(name,nameFrames[name.toLowerCase()]||'none');
       avatar.add(label);
       mesh.add(avatar);
