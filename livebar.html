@@ -212,7 +212,8 @@ let entranceQueue = [], activeEntrance = null;
 let entryBurstTimer = null, entryBurstNames = [], entryBurstNoZoomUntil = 0;
 let guestDjName = "", guestDjTravel = null;
 let cameraHome = null;
-const entranceCameraTarget = new THREE.Vector3();
+const entranceCameraTarget = new THREE.Vector3(0,2,-2.5);
+const entranceHomeTarget = new THREE.Vector3(0,2,-2.5);
 let conn = null, peer = null, started = false;
 
 const COLORS = ['#ff66aa','#66ccff','#ffcc44','#aaff66','#ff8866','#cc88ff','#66ffcc','#ff6688','#88aaff','#ffaa66','#66ffaa','#ff66cc','#ffffff','#00e0ff'];
@@ -251,6 +252,7 @@ function fitCamera() {
   camera.updateProjectionMatrix();
   camera.lookAt(0, 2.0, -2.5);
   cameraHome = camera.position.clone();
+  entranceCameraTarget.copy(entranceHomeTarget);
 }
 
 function onResize() {
@@ -741,7 +743,8 @@ function layoutVisual() {
       d.mesh.rotation.y = a + Math.PI;
       d.targetX = d.mesh.position.x;
       d.targetZ = d.mesh.position.z;
-      if (d.entering) d.mesh.position.set(d.startX,0,d.startZ);
+      if (d.entering && Number.isFinite(d.startX)) d.mesh.position.set(d.startX,0,d.startZ);
+      if (d.pendingEntrance) d.mesh.visible=false;
       if (d.name.toLowerCase()===guestDjName.toLowerCase() && !guestDjTravel) d.mesh.position.set(2.0,djPlatformHeight,-6.85);
     }
   }
@@ -764,7 +767,7 @@ function rebuildVisual() {
     next.push(d);
     previous.delete(name.toLowerCase());
   });
-  previous.forEach(d => scene.remove(d.mesh));
+  previous.forEach(d => { scene.remove(d.mesh); entranceQueue=entranceQueue.filter(x=>x!==d); if(activeEntrance?.d===d)activeEntrance=null; });
   dancers = next;
   updateNameplates();
   layoutVisual();
@@ -1036,26 +1039,36 @@ function showJoinToast(name) {
 
 // Gom khách vào gần nhau thành một lượt: 1 người thì đón bằng camera,
 // từ 2 người trở lên thì vào ngay toàn sàn, không zoom và không xếp hàng.
+function finishEntrance(d) {
+  if (!d) return;
+  d.pendingEntrance=false;
+  d.entering=false;
+  d.mesh.visible=true;
+  d.mesh.position.set(d.targetX,0,d.targetZ);
+}
+function cancelAllEntrances() {
+  if(entryBurstTimer)clearTimeout(entryBurstTimer);
+  entryBurstTimer=null;
+  entryBurstNames=[];
+  if(activeEntrance)finishEntrance(activeEntrance.d);
+  activeEntrance=null;
+  entranceQueue.forEach(finishEntrance);
+  entranceQueue=[];
+  dancers.forEach(d=>{if(d.pendingEntrance)finishEntrance(d);});
+}
 function scheduleEntrance(name) {
   const now=performance.now();
-  if(now < entryBurstNoZoomUntil){
-    const d=dancers.find(d=>d.name.toLowerCase()===name.toLowerCase());
-    if(d){d.entering=false;d.mesh.position.set(d.targetX,0,d.targetZ);}
-    return;
-  }
+  const d=dancers.find(d=>d.name.toLowerCase()===name.toLowerCase());
+  if (!d || d.entering || d.pendingEntrance || entranceQueue.includes(d) || activeEntrance?.d===d) return;
+  if(now < entryBurstNoZoomUntil){finishEntrance(d);return;}
+  // Không render avatar tại vị trí sân khấu trong thời gian gom lượt.
+  d.pendingEntrance=true;
+  d.mesh.visible=false;
   entryBurstNames.push(name);
   if(entryBurstTimer)clearTimeout(entryBurstTimer);
   if(entryBurstNames.length>=2){
     entryBurstNoZoomUntil=now+2200;
-    entryBurstNames=[];
-    entryBurstTimer=null;
-    if(activeEntrance){
-      const d=activeEntrance.d;
-      d.entering=false;d.mesh.position.set(d.targetX,0,d.targetZ);
-      activeEntrance=null;
-    }
-    entranceQueue.forEach(d=>{d.entering=false;d.mesh.position.set(d.targetX,0,d.targetZ);});
-    entranceQueue=[];
+    cancelAllEntrances();
     return;
   }
   entryBurstTimer=setTimeout(()=>{
@@ -1064,14 +1077,16 @@ function scheduleEntrance(name) {
     if(arrivals.length===1)queueEntrance(arrivals[0]);
   },1100);
 }
-// Đi từ lối vào ở phía trước camera tới vị trí đứng trên sàn.
 function queueEntrance(name) {
-  const d = dancers.find(d => d.name.toLowerCase() === name.toLowerCase());
-  if (!d || d.entering || entranceQueue.includes(d) || activeEntrance?.d === d) return;
-  d.entering = true;
-  d.startX = Math.max(-2.1,Math.min(2.1,d.targetX));
-  d.startZ = 10.6;
+  const d=dancers.find(d=>d.name.toLowerCase()===name.toLowerCase());
+  if(!d)return;
+  if(entranceQueue.includes(d)||activeEntrance?.d===d)return;
+  d.pendingEntrance=true;
+  d.entering=true;
+  d.startX=Math.max(-2.1,Math.min(2.1,d.targetX));
+  d.startZ=10.6;
   d.mesh.position.set(d.startX,0,d.startZ);
+  d.mesh.visible=false;
   entranceQueue.push(d);
 }
 function setGuestDj(name){
@@ -1083,7 +1098,7 @@ function setGuestDj(name){
   guestDjName=next;
   if(next){
     const d=dancers.find(d=>d.name.toLowerCase()===next.toLowerCase());
-    if(d){d.entering=false;entranceQueue=entranceQueue.filter(x=>x!==d);if(activeEntrance?.d===d)activeEntrance=null;
+    if(d){finishEntrance(d);entranceQueue=entranceQueue.filter(x=>x!==d);if(activeEntrance?.d===d)activeEntrance=null;
       guestDjTravel={d,elapsed:0,returning:false,start:d.mesh.position.clone()};}
   }
 }
@@ -1103,46 +1118,51 @@ function updateGuestDj(dt){
   if(progress>=3){guestDjTravel=null;if(g.returning)d.mesh.position.set(d.targetX,0,d.targetZ);}
 }
 function updateEntrance(dt,t) {
-  if (!activeEntrance && entranceQueue.length) {
+  if(!activeEntrance && entranceQueue.length && performance.now()>=entryBurstNoZoomUntil){
     const d=entranceQueue.shift();
-    if (dancers.includes(d)) activeEntrance={d,elapsed:0};
+    if(dancers.includes(d)){
+      activeEntrance={d,elapsed:0};
+      // Đặt camera ở góc đón TRƯỚC khi nhân vật được render.
+      const follow=new THREE.Vector3(d.startX*0.70,3.5,Math.min(15.5,d.startZ+5.5));
+      camera.position.copy(cameraHome).lerp(follow,0.90);
+      entranceCameraTarget.set(d.startX,1.15,d.startZ);
+      camera.lookAt(entranceCameraTarget);
+      d.mesh.position.set(d.startX,0,d.startZ);
+      d.mesh.visible=true;
+      d.pendingEntrance=false;
+    }
   }
   const a=activeEntrance;
-  if (!a) return;
-  if (!dancers.includes(a.d)) {activeEntrance=null;return;}
-  a.elapsed += dt;
+  if(!a)return;
+  if(!dancers.includes(a.d)){activeEntrance=null;return;}
+  a.elapsed+=dt;
   const walk=Math.min(1,a.elapsed/3.4);
   const smooth=walk*walk*(3-2*walk);
   const d=a.d;
   d.mesh.position.x=d.startX+(d.targetX-d.startX)*smooth;
   d.mesh.position.z=d.startZ+(d.targetZ-d.startZ)*smooth;
   d.mesh.rotation.y=Math.PI;
-  if(a.elapsed>=5.5) {
-    d.entering=false;
-    d.mesh.position.set(d.targetX,0,d.targetZ);
-    activeEntrance=null;
-  }
+  if(a.elapsed>=5.5){finishEntrance(d);activeEntrance=null;}
 }
 function updateEntranceCamera(dt,t) {
-  if (!camera || !cameraHome) return;
-  const a=performance.now()<entryBurstNoZoomUntil ? null : activeEntrance;
+  if(!camera||!cameraHome)return;
+  const a=performance.now()<entryBurstNoZoomUntil?null:activeEntrance;
   const home=cameraHome;
-  if (a) {
-    const d=a.d, elapsed=a.elapsed;
-    const inWeight=Math.min(1,elapsed/0.9);
-    const outWeight=Math.min(1,Math.max(0,(5.5-elapsed)/1.5));
-    const weight=inWeight*outWeight;
-    // Camera tiến nhẹ về nhân vật, tránh zoom quá sát trên màn hình dọc.
+  let wanted=home;
+  const look=new THREE.Vector3(0,2,-2.5);
+  if(a){
+    const d=a.d,elapsed=a.elapsed;
+    // Camera đã đứng ở lối vào, chỉ giảm dần mức theo dõi lúc kết thúc.
+    const out=Math.min(1,Math.max(0,(5.5-elapsed)/1.5));
+    const weight=out*out*(3-2*out);
     const follow=new THREE.Vector3(d.mesh.position.x*0.70,3.5,Math.min(15.5,d.mesh.position.z+5.5));
-    const wanted=home.clone().lerp(follow,weight*0.90);
-    camera.position.lerp(wanted,Math.min(1,dt*5));
-    entranceCameraTarget.set(d.mesh.position.x,1.15,d.mesh.position.z);
-    entranceCameraTarget.lerp(new THREE.Vector3(0,2,-2.5),1-weight);
-    camera.lookAt(entranceCameraTarget);
-  } else {
-    camera.position.lerp(home,Math.min(1,dt*3.5));
-    camera.lookAt(0,2,-2.5);
+    wanted=home.clone().lerp(follow,weight*0.90);
+    look.lerp(new THREE.Vector3(d.mesh.position.x,1.15,d.mesh.position.z),weight);
   }
+  const alpha=1-Math.exp(-dt*5);
+  camera.position.lerp(wanted,alpha);
+  entranceCameraTarget.lerp(look,alpha);
+  camera.lookAt(entranceCameraTarget);
 }
 
 function processJoinQueue() {
@@ -1357,7 +1377,7 @@ function handleMsg(data) {
       knownNames.add(name.toLowerCase());
       rebuildVisual();
     }
-    showJoinToast(name);
+    if (knownNames.has(name.toLowerCase())) showJoinToast(name);
   }
   if (data.type === 'remove') {
     const key = (data.name || '').toLowerCase();
@@ -1366,6 +1386,7 @@ function handleMsg(data) {
     rebuildVisual();
   }
   if (data.type === 'clear') {
+    cancelAllEntrances(); entryBurstNoZoomUntil=0;
     allNames = []; knownNames.clear(); guestDjName="";guestDjTravel=null; rebuildVisual();
   }
 }
