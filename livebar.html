@@ -1033,9 +1033,8 @@ function speakJoin(name) {
 function showJoinToast(name) {
   const n = String(name || '').trim();
   if (!n) return;
-  joinQueue.push(n);
+  // Queue the visual entrance first; announce only when the avatar is revealed.
   scheduleEntrance(n);
-  processJoinQueue();
 }
 
 // Gom khách vào gần nhau thành một lượt: 1 người thì đón bằng camera,
@@ -1050,18 +1049,27 @@ function finishEntrance(d) {
 function cancelAllEntrances() {
   if(entryBurstTimer)clearTimeout(entryBurstTimer);
   entryBurstTimer=null;
+  const burstNames=entryBurstNames.slice();
   entryBurstNames=[];
   if(activeEntrance)finishEntrance(activeEntrance.d);
   activeEntrance=null;
   entranceQueue.forEach(finishEntrance);
   entranceQueue=[];
   dancers.forEach(d=>{if(d.pendingEntrance)finishEntrance(d);});
+  // A burst skips individual camera entrances, so announce the group now.
+  burstNames.forEach(enqueueJoinAnnouncement);
+}
+function enqueueJoinAnnouncement(name) {
+  if (!name) return;
+  joinQueue.push(name);
+  processJoinQueue();
 }
 function scheduleEntrance(name) {
   const now=performance.now();
   const d=dancers.find(d=>d.name.toLowerCase()===name.toLowerCase());
-  if (!d || d.entering || entranceQueue.includes(d) || activeEntrance?.d===d || entryBurstNames.some(n=>n.toLowerCase()===name.toLowerCase())) return;
-  if(now < entryBurstNoZoomUntil){finishEntrance(d);return;}
+  if (!d) { enqueueJoinAnnouncement(name); return; }
+  if (d.entering || entranceQueue.includes(d) || activeEntrance?.d===d || entryBurstNames.some(n=>n.toLowerCase()===name.toLowerCase())) return;
+  if(now < entryBurstNoZoomUntil){finishEntrance(d);enqueueJoinAnnouncement(name);return;}
   // Không render avatar tại vị trí sân khấu trong thời gian gom lượt.
   d.pendingEntrance=true;
   d.mesh.visible=false;
@@ -1131,6 +1139,8 @@ function updateEntrance(dt,t) {
       d.mesh.position.set(d.startX,0,d.startZ);
       d.pendingEntrance=false;
       d.mesh.visible=true;
+      // Announcement and reveal happen in the same animation frame.
+      enqueueJoinAnnouncement(d.name);
     }
   }
   const a=activeEntrance;
