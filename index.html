@@ -75,7 +75,7 @@ input:focus{border-color:#b14dff}
 
   <div class="msg" id="msg"></div>
   <div class="link-row">
-    Chỉ xem sân khấu? <a href="dj-bar-live.html">Vào bằng mã phòng →</a>
+    Chỉ xem sân khấu? <a href="livebar.html">Vào bằng mã phòng →</a>
   </div>
 </div>
 <script>
@@ -131,7 +131,7 @@ document.getElementById('btn-login').onclick = () => {
   const acc = accounts[user.toLowerCase()];
   if (!acc || acc.hash !== simpleHash(pass)) return showMsg('Sai tên đăng nhập hoặc mật khẩu');
   sessionStorage.setItem('djbar_admin', JSON.stringify({ user: acc.user, at: Date.now() }));
-  location.href = 'dj-bar-admin.html';
+  location.href = 'livebar.html';
 };
 
 // Enter key
@@ -147,7 +147,7 @@ document.getElementById('btn-login').onclick = () => {
 // Đã đăng nhập thì vào admin
 try {
   const s = JSON.parse(sessionStorage.getItem('djbar_admin') || 'null');
-  if (s && s.user && Date.now() - s.at < 86400000) location.href = 'dj-bar-admin.html';
+  if (s && s.user && Date.now() - s.at < 86400000) location.href = 'livebar.html';
 } catch {}
 </script>
 </body>
