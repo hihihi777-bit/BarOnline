@@ -159,7 +159,7 @@ html,body{
   </div>
   <button class="btn" id="btn-join">Vào sân khấu</button>
   <div class="msg" id="join-msg"></div>
-  <p class="hint">Mã phòng hiện trên trang Điều khiển (máy tính).<br>Admin: <a href="index.html">Đăng nhập</a></p>
+  <p class="hint">Mã phòng hiện trên trang Điều khiển (máy tính).<br>Admin: <a href="dj-bar-login.html">Đăng nhập</a></p>
 </div>
 
 <div id="stage-ui">
@@ -791,46 +791,55 @@ function createChar(colorHex, isDJ = false) {
 }
 
 function makeLabel(text, frame='none') {
-  const cv=document.createElement('canvas');cv.width=768;cv.height=192;
+  const cv=document.createElement('canvas');cv.width=1024;cv.height=256;
   const ctx=cv.getContext('2d');
   const themes={
-    gold:['#ffd36a','#fff4bd','#a87517','♛'],
-    neon:['#ff56cc','#ffe0f7','#9b36f7','✦'],
-    ice:['#4deaff','#e0ffff','#2689ff','◆'],
-    fire:['#ff7a42','#ffe2a1','#ff345c','✦'],
-    galaxy:['#a889ff','#f3ddff','#5634cf','✧']
+    gold:['#ffe69a','#ffbb37','#ad6a17'],
+    neon:['#ffd0ff','#ff4cdd','#8b43f4'],
+    ice:['#e6ffff','#45dfff','#2378e9'],
+    fire:['#ffe1a3','#ff713d','#ed295a'],
+    galaxy:['#f4dfff','#b58aff','#6651f5']
   };
-  const th=themes[frame]||['#32e6f5','#ffffff','#5468ff','✧'];
-  const vip=Boolean(themes[frame]), name=String(text).slice(0,22);
-  const rr=(x,y,w,h,r)=>{ctx.beginPath();ctx.roundRect(x,y,w,h,r);};
-  ctx.clearRect(0,0,768,192);
-  // Layered translucent badge, soft neon halo, fine chrome edges.
-  ctx.shadowColor=th[0];ctx.shadowBlur=34;
-  const outer=ctx.createLinearGradient(40,20,720,180);
-  outer.addColorStop(0,th[0]);outer.addColorStop(.5,th[1]);outer.addColorStop(1,th[2]);
-  ctx.fillStyle='rgba(6,12,33,.94)';rr(25,28,718,138,35);ctx.fill();
-  ctx.shadowBlur=0;ctx.strokeStyle=outer;ctx.lineWidth=5;ctx.stroke();
-  ctx.strokeStyle='rgba(255,255,255,.25)';ctx.lineWidth=2;rr(35,38,698,118,29);ctx.stroke();
-  const bg=ctx.createLinearGradient(0,35,0,160);
-  bg.addColorStop(0,'rgba(255,255,255,.13)');bg.addColorStop(.35,'rgba(255,255,255,.035)');bg.addColorStop(1,'rgba(0,0,0,.15)');
-  ctx.fillStyle=bg;rr(38,41,692,112,26);ctx.fill();
-  // Top accent line and symmetric futuristic corner marks.
-  ctx.fillStyle=outer;rr(280,26,208,6,3);ctx.fill();
-  ctx.strokeStyle=th[0];ctx.lineWidth=4;
-  ctx.beginPath();ctx.moveTo(49,70);ctx.lineTo(49,57);ctx.lineTo(70,57);
-  ctx.moveTo(719,124);ctx.lineTo(719,137);ctx.lineTo(698,137);ctx.stroke();
+  const th=themes[frame];
+  const name=String(text).slice(0,22);
+  ctx.clearRect(0,0,1024,256);
   ctx.textAlign='center';ctx.textBaseline='middle';
-  ctx.font='800 28px system-ui,sans-serif';
-  ctx.fillStyle=th[0];ctx.shadowColor=th[0];ctx.shadowBlur=12;
-  ctx.fillText(vip?'✦  '+frame.toUpperCase()+'  ✦':'✦  LIVE GUEST  ✦',384,65);
-  ctx.shadowBlur=0;
-  ctx.font='900 49px system-ui,sans-serif';
-  ctx.fillStyle='#ffffff';ctx.shadowColor=th[0];ctx.shadowBlur=10;
-  ctx.fillText(name,384,115,620);
-  ctx.shadowBlur=0;
+  if(th){
+    // Cánh đối xứng ôm hai bên tên, không có hình chữ nhật hay nền bảng.
+    const drawWing=(side)=>{
+      ctx.save();ctx.translate(512+side*178,135);ctx.scale(side,1);
+      for(let i=0;i<4;i++){
+        const y=-48+i*22;
+        const length=135-i*15;
+        const grad=ctx.createLinearGradient(0,y,length,y-28);
+        grad.addColorStop(0,th[0]);grad.addColorStop(.55,th[1]);grad.addColorStop(1,th[2]);
+        ctx.beginPath();ctx.moveTo(0,y+20);
+        ctx.bezierCurveTo(length*.26,y-14,length*.64,y-34,length,y-34-i*3);
+        ctx.bezierCurveTo(length*.79,y-1,length*.45,y+22,8,y+30);
+        ctx.closePath();ctx.fillStyle=grad;
+        ctx.shadowColor=th[1];ctx.shadowBlur=15;ctx.fill();ctx.shadowBlur=0;
+        ctx.strokeStyle='rgba(255,255,255,.55)';ctx.lineWidth=1.5;ctx.stroke();
+      }
+      ctx.restore();
+    };
+    drawWing(-1);drawWing(1);
+    ctx.font='700 24px system-ui,sans-serif';ctx.fillStyle=th[1];
+    ctx.shadowColor=th[1];ctx.shadowBlur=12;
+    ctx.fillText('✦  '+frame.toUpperCase()+'  ✦',512,66);
+    ctx.shadowBlur=0;
+    ctx.font='900 57px system-ui,sans-serif';
+    ctx.lineWidth=7;ctx.strokeStyle='rgba(5,9,25,.9)';ctx.strokeText(name,512,140,390);
+    ctx.fillStyle='#ffffff';ctx.shadowColor=th[1];ctx.shadowBlur=13;
+    ctx.fillText(name,512,140,390);ctx.shadowBlur=0;
+  }else{
+    // Người chưa được cấp khung chỉ có tên thường, không trang trí.
+    ctx.font='bold 57px system-ui,sans-serif';
+    ctx.lineWidth=7;ctx.strokeStyle='rgba(4,8,24,.85)';ctx.strokeText(name,512,140,650);
+    ctx.fillStyle='#ffffff';ctx.fillText(name,512,140,650);
+  }
   const tex=new THREE.CanvasTexture(cv);tex.minFilter=THREE.LinearFilter;
   const spr=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false}));
-  spr.scale.set(vip?2.35:2.05,vip?0.59:0.52,1);
+  spr.scale.set(th?2.55:1.95,th?0.64:0.49,1);
   spr.position.y=2.02;spr.userData.labelTexture=tex;
   return spr;
 }
