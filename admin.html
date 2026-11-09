@@ -146,11 +146,12 @@ input:focus{border-color:#b14dff}
     <input id="frame-name" list="guest-dj-options" placeholder="Tên người muốn gắn khung..."/>
     <select id="frame-style" style="flex:1;min-width:160px;padding:11px;border-radius:10px;background:#171a2b;color:white;border:1px solid #535875">
       <option value="none">Không khung (mặc định)</option>
-      <option value="gold">👑 Vàng hoàng gia</option>
+      <option value="gold">🥇 Gold Elite – Bậc 4</option>
       <option value="neon">💗 Neon hồng</option>
       <option value="ice">❄️ Kim cương xanh</option>
       <option value="fire">🔥 Lửa đỏ cam</option>
-      <option value="galaxy">🌌 Ngân hà tím</option>
+      <option value="galaxy">🌌 Celestial – Bậc 5</option>
+      <option value="royal">👑 Royal Supreme – Hoàng gia (Bậc 6)</option>
     </select>
     <button class="btn btn-add" id="btn-set-frame">Áp dụng khung</button>
   </div>
@@ -191,16 +192,16 @@ let connections = []; // stage viewers
 (function () {
   try {
     const s = JSON.parse(sessionStorage.getItem('djbar_admin') || 'null');
-    if (!s || !s.user) { location.href = 'index.html'; return; }
+    if (!s || !s.user) { location.href = 'dj-bar-login.html'; return; }
     document.getElementById('admin-name').textContent = s.user;
   } catch {
-    location.href = 'index.html';
+    location.href = 'dj-bar-login.html';
   }
 })();
 
 document.getElementById('btn-logout').onclick = () => {
   sessionStorage.removeItem('djbar_admin');
-  location.href = 'index.html';
+  location.href = 'dj-bar-login.html';
 };
 
 function genCode() {
