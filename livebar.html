@@ -811,7 +811,7 @@ function createChar(colorHex, isDJ = false) {
   const mouth = charMat(0x814f4b,0.9);
   // One continuous silhouette: hips, torso and shoulders deliberately overlap.
   // Rounded junctions hide the sharp edges of the primitive geometry.
-  const body = new THREE.Group(); body.position.y=0.77; g.add(body);
+  const body = new THREE.Group(); body.position.y=0.91; g.add(body);
   charPart(body,CHAR_GEO.sphere,pants,[0,-0.325,0],[0.205,0.155,0.127]);
   charPart(body,CHAR_GEO.taper,cloth,[0,-0.005,0],[isDJ?0.275:0.255,0.44,0.152]);
   charPart(body,CHAR_GEO.sphere,cloth,[0,0.205,0],[0.278,0.13,0.158]);
@@ -833,26 +833,27 @@ function createChar(colorHex, isDJ = false) {
   charPart(head,CHAR_GEO.sphere,hairMat,[0,0.157,-0.016],[0.175,0.094,0.164]);
   charPart(head,CHAR_GEO.sphere,hairMat,[-0.063,0.126,0.098],[0.092,0.046,0.070],[0,0,-0.22]);
   if(variant%3===0)charPart(head,CHAR_GEO.sphere,hairMat,[0.09,0.139,0.083],[0.09,0.051,0.076]);
+  // Longer arms and legs, with overlapping rounded segments to avoid stubby silhouettes.
   function arm(side){
     // Shoulder socket stays under the sleeve even during wide dance rotations.
     charPart(body,CHAR_GEO.sphere,cloth,[side*0.238,0.185,0],[0.115,0.125,0.118]);
     const pivot=new THREE.Group();pivot.position.set(side*0.252,0.185,0);body.add(pivot);
     charPart(pivot,CHAR_GEO.sphere,cloth,[side*0.018,-0.048,0],[0.100,0.145,0.103]);
-    charPart(pivot,CHAR_GEO.sphere,cloth,[side*0.025,-0.178,0],[0.079,0.166,0.083]);
-    charPart(pivot,CHAR_GEO.sphere,skin,[side*0.03,-0.313,0.004],[0.062,0.079,0.063]);
-    charPart(pivot,CHAR_GEO.sphere,skin,[side*0.03,-0.365,0.012],[0.055,0.071,0.056]);
+    charPart(pivot,CHAR_GEO.sphere,cloth,[side*0.025,-0.230,0],[0.081,0.215,0.083]);
+    charPart(pivot,CHAR_GEO.sphere,skin,[side*0.03,-0.422,0.004],[0.063,0.120,0.063]);
+    charPart(pivot,CHAR_GEO.sphere,skin,[side*0.03,-0.530,0.012],[0.055,0.087,0.056]);
     pivot.rotation.z=side*0.15;return pivot;
   }
   const armL=arm(-1),armR=arm(1);
   function leg(side){
-    const pivot=new THREE.Group();pivot.position.set(side*0.105,0.43,0);g.add(pivot);
+    const pivot=new THREE.Group();pivot.position.set(side*0.105,0.57,0);g.add(pivot);
     // The thigh starts inside the pelvis, knee and shin overlap, and shoes
     // overlap the ankle; there are no visible gaps at normal dance angles.
     charPart(pivot,CHAR_GEO.sphere,pants,[0,-0.065,0],[0.108,0.175,0.112]);
-    charPart(pivot,CHAR_GEO.sphere,pants,[0,-0.245,0],[0.093,0.188,0.100]);
-    charPart(pivot,CHAR_GEO.sphere,pants,[0,-0.378,0],[0.085,0.11,0.089]);
-    charPart(pivot,CHAR_GEO.sphere,pants,[0,-0.456,0],[0.079,0.126,0.082]);
-    charPart(pivot,CHAR_GEO.sphere,shoes,[0,-0.527,0.055],[0.104,0.075,0.168]);
+    charPart(pivot,CHAR_GEO.sphere,pants,[0,-0.265,0],[0.095,0.205,0.100]);
+    charPart(pivot,CHAR_GEO.sphere,pants,[0,-0.412,0],[0.086,0.128,0.089]);
+    charPart(pivot,CHAR_GEO.sphere,pants,[0,-0.502,0],[0.080,0.125,0.082]);
+    charPart(pivot,CHAR_GEO.sphere,shoes,[0,-0.565,0.055],[0.104,0.075,0.168]);
     return pivot;
   }
   const legL=leg(-1),legR=leg(1);
