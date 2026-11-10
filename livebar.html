@@ -835,56 +835,57 @@ function makeLabel(text, frame='none') {
     g.addColorStop(0,th.l);g.addColorStop(.5,th.m);g.addColorStop(1,th.d);return g;
   };
 
-  // Cánh phượng mềm: các dải lông Bezier liền mạch, đầu thuôn cong và xếp lớp tự nhiên.
-  // Không dùng lưỡi tam giác hoặc đường viền trắng sắc cạnh.
-  const wingLayers = th.t===3 ? [1, .79, .60] : th.t===2 ? [1,.76] : [1,.72];
+  // Cánh phượng hoàng: một dáng cánh thống nhất, lông tách nhẹ theo đường cong.
+  // Tránh chồng nhiều lớp giáp và những mũi nhọn hình học.
   for(const side of [-1,1]){
-    b.save();b.translate(512+side*204,CY+8);b.scale(side,1);
-    wingLayers.forEach((scale,li)=>{
-      const count=li===0?7:li===1?6:5;
-      for(let k=count-1;k>=0;k--){
-        const u=k/(count-1);
-        // Đầu cánh xòe lên và cong trở lại, như lông vũ đang bay.
-        const ex=(137+u*122)*scale;
-        const ey=(-70+u*102-20*Math.sin(u*Math.PI))*scale;
-        const bend=(28+18*u)*scale;
-        const thick=(14+7*u)*scale;
-        const sx=6+li*7, sy=li*5;
-        b.beginPath();b.moveTo(sx,sy);
-        b.bezierCurveTo(49*scale,-38*scale,ex*.48,-76*scale+bend*.12,ex,ey);
-        b.bezierCurveTo(ex-18*scale,ey+thick*.80,ex*.54,ey+thick*2.3+bend,ex*.30,sy+thick*.72);
-        b.bezierCurveTo(ex*.16,sy+thick*.5,18*scale,sy+thick*.25,sx,sy);
-        b.closePath();
-        const gold=b.createLinearGradient(ex*.35,ey-thick,ex*.6,ey+thick*2);
-        gold.addColorStop(0,th.l);gold.addColorStop(.28,th.m);
-        gold.addColorStop(.65,th.d);gold.addColorStop(1,th.m);
-        b.fillStyle=gold;b.shadowColor=th.m;b.shadowBlur=li===0?7:3;b.fill();b.shadowBlur=0;
-        b.strokeStyle='rgba(255,233,173,.36)';b.lineWidth=1.1;b.stroke();
-        // Sống lông mảnh, uốn theo thân cánh, không kéo thành cạnh cứng.
-        b.beginPath();b.moveTo(sx+15*scale,sy-2*scale);
-        b.bezierCurveTo(ex*.35,-25*scale,ex*.64,ey-13*scale,ex-7*scale,ey+3*scale);
-        b.strokeStyle='rgba(255,250,216,.43)';b.lineWidth=1.25;b.stroke();
-      }
+    b.save();
+    b.translate(512+side*208,CY+7);
+    b.scale(side,1);
+    // Dáng cánh chính mềm và thuôn, phủ phía sau các sợi lông.
+    b.beginPath();
+    b.moveTo(-14,20);
+    b.bezierCurveTo(45,-48,120,-92,240,-101);
+    b.bezierCurveTo(218,-63,192,-27,158,-4);
+    b.bezierCurveTo(110,32,48,45,-14,20);
+    b.closePath();
+    const wingBase=b.createLinearGradient(30,-85,175,42);
+    wingBase.addColorStop(0,th.l);wingBase.addColorStop(.22,th.m);
+    wingBase.addColorStop(.60,th.d);wingBase.addColorStop(1,'#49200e');
+    b.fillStyle=wingBase;b.shadowColor=th.m;b.shadowBlur=10;b.fill();b.shadowBlur=0;
+    // Sáu lông bay xếp dạng quạt; mỗi lông có đầu cong, không có góc gãy.
+    const feathers=[
+      {x:242,y:-103,low:-33,w:19},
+      {x:258,y:-75,low:-20,w:21},
+      {x:267,y:-44,low:-7,w:23},
+      {x:264,y:-12,low:7,w:24},
+      {x:248,y:18,low:22,w:24},
+      {x:219,y:44,low:36,w:22}
+    ];
+    feathers.forEach((f,i)=>{
+      const ox=18+i*3,oy=9+i*3;
+      b.beginPath();b.moveTo(ox,oy);
+      b.bezierCurveTo(78,-60+i*12,158,f.y-42,f.x,f.y);
+      b.bezierCurveTo(f.x-14,f.y+f.w*.65,170,f.low+f.w,111,f.low+f.w*.85);
+      b.bezierCurveTo(65,f.low+f.w*.75,38,oy+11,ox,oy);
+      b.closePath();
+      const grad=b.createLinearGradient(85,f.y-35,145,f.low+35);
+      grad.addColorStop(0,th.l);grad.addColorStop(.24,th.m);
+      grad.addColorStop(.68,th.d);grad.addColorStop(1,th.m);
+      b.fillStyle=grad;b.fill();
+      b.lineWidth=1.15;b.strokeStyle='rgba(255,235,175,.44)';b.stroke();
+      b.beginPath();b.moveTo(40,oy-3);
+      b.bezierCurveTo(100,-29+i*7,175,f.y-17,f.x-9,f.y+3);
+      b.strokeStyle='rgba(255,248,210,.46)';b.lineWidth=1.35;b.stroke();
     });
-    b.restore();
-  }
-
-  // Trang sức hoàng gia: các lớp giáp vàng chạm trổ đối xứng hai đầu.
-  for(const side of [-1,1]){
-    b.save();b.translate(512+side*207,CY);b.scale(side,1);
-    for(let k=0;k<4;k++){
-      const y=(k-1.5)*18;
-      b.beginPath();b.moveTo(0,y-9);
-      b.bezierCurveTo(40,y-30,100+k*13,y-23,148+k*10,y-39);
-      b.bezierCurveTo(127+k*10,y-5,69,y+17,5,y+11);b.closePath();
-      const fil=b.createLinearGradient(0,y-30,150,y+20);
-      fil.addColorStop(0,th.d);fil.addColorStop(.32,th.m);fil.addColorStop(.55,th.l);fil.addColorStop(.8,th.m);fil.addColorStop(1,th.d);
-      b.fillStyle=fil;b.shadowColor=th.m;b.shadowBlur=6;b.fill();b.shadowBlur=0;
-      b.strokeStyle='rgba(255,250,209,.85)';b.lineWidth=2;b.stroke();
-    }
-    // Đầu giáp dạng mũi giáo khắc vàng.
-    b.beginPath();b.moveTo(120,-6);b.lineTo(205,-21);b.lineTo(167,1);b.lineTo(203,20);b.lineTo(115,9);b.closePath();
-    b.fillStyle=metal(120,-20,200,20);b.fill();b.strokeStyle=th.l;b.lineWidth=2;b.stroke();
+    // Dải cong ở gốc cánh nối mượt với bảng tên.
+    b.beginPath();b.moveTo(-25,-13);
+    b.bezierCurveTo(35,-39,85,-28,124,-10);
+    b.bezierCurveTo(79,9,38,25,-25,31);
+    b.closePath();
+    const root=b.createLinearGradient(0,-32,90,30);
+    root.addColorStop(0,th.l);root.addColorStop(.45,th.m);root.addColorStop(1,th.d);
+    b.fillStyle=root;b.fill();
+    b.strokeStyle='rgba(255,248,214,.55)';b.lineWidth=1.5;b.stroke();
     b.restore();
   }
 
