@@ -1641,7 +1641,11 @@ const LIVE_ROOM_CODE = 'BARLIVE001';
 let liveRetryTimer = null;
 function startLiveHost() {
   showStageUI();
-  if (!started) { started = true; initScene(); }
+  if (!started) {
+    started = true;
+    // Cho trinh duyet ve giao dien truoc, khong cho PeerJS doi dung canh 3D.
+    requestAnimationFrame(() => initScene());
+  }
   if (peer && !peer.destroyed) return;
   setConnUI('Đang mở kết nối Admin...', false);
   peer = new Peer('djbar-' + LIVE_ROOM_CODE, {
@@ -1683,7 +1687,7 @@ function startLiveHost() {
     if (peer) { try { peer.destroy(); } catch(e) {} }
     peer = null;
     clearTimeout(liveRetryTimer);
-    liveRetryTimer = setTimeout(startLiveHost, 7000);
+    liveRetryTimer = setTimeout(startLiveHost, 2000);
   });
 }
 startLiveHost();
