@@ -100,10 +100,6 @@ html,body{
   background:linear-gradient(135deg,#00e0ff,#0080ff);
 }
 #btn-music{pointer-events:auto;border:0;border-radius:12px;padding:6px 10px;font-size:11px;font-weight:700;color:#fff;background:#8b42cc;cursor:pointer}
-#btn-orbit{pointer-events:auto;border:1px solid #b77aff;border-radius:12px;padding:7px 10px;font-size:12px;font-weight:800;color:white;background:rgba(80,24,128,.85);cursor:pointer}
-#btn-orbit.on{background:linear-gradient(135deg,#9e55fa,#e447aa);box-shadow:0 0 12px #aa44ff66}
-#orbit-hint{position:absolute;right:10px;bottom:62px;pointer-events:none;background:rgba(0,0,0,.65);border:1px solid #a76cf177;border-radius:9px;color:#eee;font-size:11px;padding:6px 9px;display:none}
-#orbit-hint.show{display:block}
 #btn-sound.on{background:linear-gradient(135deg,#00ffa8,#00aa66)}
 #speech-status{
   position:absolute;left:50%;transform:translateX(-50%);
@@ -169,8 +165,7 @@ html,body{
 <div id="stage-ui">
   <div id="led-wrap" style="display:none"><div id="led-track"><span id="led1">♪ FUNK PULSE  ·  </span><span id="led2">♪ FUNK PULSE  ·  </span></div></div>
   <div id="hud">Đang nhảy: <strong id="cnt">0</strong>
-    <button type="button" id="btn-sound">Bật tiếng 🔊</button><button id="btn-orbit" type="button" title="Xoay camera quanh quán">🔄 Xoay quán</button>
-  <button type="button" id="btn-music">Bật nhạc ▶</button>
+    <button type="button" id="btn-sound">Bật tiếng 🔊</button><button type="button" id="btn-music">Bật nhạc ▶</button>
   </div>
   <div id="speech-status"></div>
   <div id="stage-music" aria-hidden="true" style="position:absolute;left:-9999px;top:-9999px;width:320px;height:150px;overflow:hidden;pointer-events:none;visibility:hidden">
@@ -186,7 +181,6 @@ html,body{
   </div>
 </div>
 
-<div id="orbit-hint">Kéo để xoay • Vuốt 2 ngón / lăn chuột để zoom • Bấm lại để về góc cũ</div>
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}</script>
 <script type="module">
@@ -220,6 +214,7 @@ let guestDjName = "", guestDjTravel = null, danceZoomUntil = 0;
 let mcEnabled = true, mcAnchor = null, mcAvatar = null, mcBubble = null, mcBubbleCanvas = null, mcBubbleTexture = null, mcNameLabel = null;
 let mcPersonName = ''; // Giữ khung tên gốc khi khách được chọn làm MC
 let mcZoomUntil=0;
+let lastLabelAnim = 0; // Nhịp vẽ lại khung tên chuyển động
 let mcPhraseIndex = 0, mcNextPhraseAt = 0, mcBubbleUntil = 0;
 const MC_PHRASES = ['Yêu ai yêu ai?', 'Giơ tay lên nào!', 'Ở đây ai yêu anh nhất?', 'Anh em đã sẵn sàng chưa?', 'Hey Hey Hey!'];
 function showMcPhrase(phrase) {
@@ -286,71 +281,6 @@ function updateMc(dt,t){
   mcAvatar.rotation.y=Math.sin(t*1.4)*0.16;
 }
 
-// Manual orbit view: intentionally independent of the automatic show camera.
-let orbitEnabled=false,orbitTheta=0,orbitPhi=1.14,orbitRadius=18;
-const orbitTarget=new THREE.Vector3(0,1.8,-2.7);
-const orbitPointers=new Map();
-let orbitLastPinch=0;
-function applyOrbitCamera(){
-  if(!camera||!orbitEnabled)return;
-  const sin=Math.sin(orbitPhi);
-  camera.position.set(
-    orbitTarget.x+orbitRadius*sin*Math.sin(orbitTheta),
-    orbitTarget.y+orbitRadius*Math.cos(orbitPhi),
-    orbitTarget.z+orbitRadius*sin*Math.cos(orbitTheta)
-  );
-  camera.lookAt(orbitTarget);
-}
-function setOrbitEnabled(value){
-  orbitEnabled=!!value;
-  const btn=document.getElementById('btn-orbit');
-  btn?.classList.toggle('on',orbitEnabled);
-  if(btn)btn.textContent=orbitEnabled?'↩ Góc mặc định':'🔄 Xoay quán';
-  document.getElementById('orbit-hint')?.classList.toggle('show',orbitEnabled);
-  if(orbitEnabled&&camera){
-    const offset=camera.position.clone().sub(orbitTarget);
-    orbitRadius=Math.max(5,Math.min(35,offset.length()));
-    orbitTheta=Math.atan2(offset.x,offset.z);
-    orbitPhi=Math.acos(THREE.MathUtils.clamp(offset.y/offset.length(),-.98,.98));
-    canvas.style.touchAction='none';
-    applyOrbitCamera();
-  }else{
-    orbitPointers.clear();orbitLastPinch=0;canvas.style.touchAction='';
-  }
-}
-document.getElementById('btn-orbit')?.addEventListener('click',()=>setOrbitEnabled(!orbitEnabled));
-canvas.addEventListener('pointerdown',e=>{
-  if(!orbitEnabled)return;
-  orbitPointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
-  canvas.setPointerCapture(e.pointerId);
-});
-canvas.addEventListener('pointermove',e=>{
-  if(!orbitEnabled||!orbitPointers.has(e.pointerId))return;
-  const prev=orbitPointers.get(e.pointerId);
-  orbitPointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
-  if(orbitPointers.size===1){
-    orbitTheta-=(e.clientX-prev.x)*.006;
-    orbitPhi=THREE.MathUtils.clamp(orbitPhi-(e.clientY-prev.y)*.005,.28,Math.PI-.28);
-  }else if(orbitPointers.size===2){
-    const pts=[...orbitPointers.values()];
-    const dist=Math.hypot(pts[0].x-pts[1].x,pts[0].y-pts[1].y);
-    if(orbitLastPinch>0)orbitRadius=THREE.MathUtils.clamp(orbitRadius*orbitLastPinch/Math.max(1,dist),5,35);
-    orbitLastPinch=dist;
-  }
-  applyOrbitCamera();
-});
-const endOrbitPointer=e=>{
-  orbitPointers.delete(e.pointerId);
-  orbitLastPinch=0;
-};
-canvas.addEventListener('pointerup',endOrbitPointer);
-canvas.addEventListener('pointercancel',endOrbitPointer);
-canvas.addEventListener('wheel',e=>{
-  if(!orbitEnabled)return;
-  e.preventDefault();
-  orbitRadius=THREE.MathUtils.clamp(orbitRadius*Math.exp(e.deltaY*.001),5,35);
-  applyOrbitCamera();
-},{passive:false});
 let specialDanceStyle = 'shuffle';
 let cameraHome = null;
 const entranceCameraTarget = new THREE.Vector3();
@@ -395,7 +325,6 @@ function fitCamera() {
   camera.updateProjectionMatrix();
   camera.lookAt(0, aspect < 0.90 ? 1.8 : 2.0, aspect < 0.90 ? -3.2 : -2.5);
   cameraHome = camera.position.clone();
-  if(orbitEnabled)applyOrbitCamera();
 }
 
 function onResize() {
@@ -862,100 +791,205 @@ function createChar(colorHex, isDJ = false) {
   return g;
 }
 
+// ===== KHUNG TÊN: bảng tên viền vàng + cánh lông vũ nhiều tầng + vương miện + ngọc =====
 function makeLabel(text, frame='none') {
-  const cv=document.createElement('canvas');cv.width=1536;cv.height=384;
+  const cv=document.createElement('canvas');cv.width=1024;cv.height=256;
   const ctx=cv.getContext('2d');
   const themes={
-    gold:['#fff9cf','#ffd66b','#b96c16','#fff0a2'],
-    neon:['#fff0ff','#ff83ec','#9635d9','#ffc4fa'],
-    ice:['#f2ffff','#91f4ff','#257bd0','#d9ffff'],
-    fire:['#fff1b8','#ffac48','#c93739','#ffe3a0'],
-    galaxy:['#f9edff','#cba1ff','#7047d4','#eee0ff']
+    gold:  {l:'#fff1b0',m:'#ffc23d',d:'#a8610f',g:'#ff3b4e',t:1},
+    neon:  {l:'#ffe0ff',m:'#ff4cdd',d:'#7a2fd8',g:'#4ef0ff',t:1},
+    ice:   {l:'#f0ffff',m:'#45dfff',d:'#1f63cf',g:'#ffffff',t:1},
+    fire:  {l:'#fff0b8',m:'#ff713d',d:'#b3162f',g:'#ffd24a',t:1},
+    galaxy:{l:'#f8e8ff',m:'#b58aff',d:'#4a38d8',g:'#ff7ad9',t:2},
+    royal: {l:'#fff6cf',m:'#ffd24a',d:'#c42a14',g:'#3bd8ff',t:3}
   };
-  const th=themes[frame],name=String(text).slice(0,22);
-  ctx.clearRect(0,0,cv.width,cv.height);
-  ctx.textAlign='center';ctx.textBaseline='middle';
-  if(th){
-    const cx=768,cy=212;
-    const metallic=(x1,y1,x2,y2)=>{
-      const g=ctx.createLinearGradient(x1,y1,x2,y2);
-      g.addColorStop(0,th[2]);g.addColorStop(.18,th[1]);
-      g.addColorStop(.4,th[0]);g.addColorStop(.57,th[2]);
-      g.addColorStop(.77,th[1]);g.addColorStop(1,th[0]);return g;
-    };
-    const flourish=(side)=>{
-      ctx.save();ctx.translate(cx+side*274,cy-6);ctx.scale(side,1);
-      // Lá/cánh nhiều tầng kiểu phù điêu hoàng gia, không dùng khung chữ nhật.
-      for(let i=0;i<7;i++){
-        const y=-96+i*29,reach=205-i*12;
-        ctx.beginPath();ctx.moveTo(-14,y+34);
-        ctx.bezierCurveTo(42,y-13,reach*.56,y-34,reach+16,y-56-i*2);
-        ctx.bezierCurveTo(reach-9,y-12,reach*.56,y+27,6,y+48);
-        ctx.bezierCurveTo(20,y+23,-7,y+35,-14,y+34);ctx.closePath();
-        ctx.fillStyle=metallic(0,y-40,reach,y+48);
-        ctx.shadowColor=th[1];ctx.shadowBlur=13;ctx.fill();ctx.shadowBlur=0;
-        ctx.strokeStyle=th[0];ctx.lineWidth=3;ctx.stroke();
-        ctx.beginPath();ctx.moveTo(0,y+30);
-        ctx.bezierCurveTo(68,y+12,reach*.58,y-13,reach-5,y-45);
-        ctx.strokeStyle='rgba(255,255,255,.73)';ctx.lineWidth=2;ctx.stroke();
-      }
-      // Nhánh hoa văn uốn lượn phía dưới cánh
-      ctx.beginPath();ctx.moveTo(-25,57);
-      ctx.bezierCurveTo(55,107,115,97,188,44);
-      ctx.bezierCurveTo(224,11,194,-12,166,12);
-      ctx.strokeStyle=th[1];ctx.lineWidth=8;ctx.shadowColor=th[1];ctx.shadowBlur=10;ctx.stroke();
-      ctx.shadowBlur=0;ctx.strokeStyle=th[0];ctx.lineWidth=2;ctx.stroke();
-      for(let i=0;i<5;i++){
-        const x=42+i*33,y=76-i*8;
-        ctx.save();ctx.translate(x,y);ctx.rotate(-.65);
-        ctx.beginPath();ctx.ellipse(0,0,18,7,0,0,Math.PI*2);
-        ctx.fillStyle=metallic(-12,-10,14,12);ctx.fill();ctx.restore();
-      }
-      ctx.restore();
-    };
-    flourish(-1);flourish(1);
-    // Vương miện ở phía trên và viên ngọc giữa, không có nền che tên.
-    ctx.save();ctx.translate(cx,79);
-    ctx.beginPath();ctx.moveTo(-83,22);ctx.lineTo(-92,-19);ctx.lineTo(-48,2);
-    ctx.lineTo(-27,-42);ctx.lineTo(0,-9);ctx.lineTo(27,-42);
-    ctx.lineTo(48,2);ctx.lineTo(92,-19);ctx.lineTo(83,22);ctx.closePath();
-    ctx.fillStyle=metallic(-60,-40,70,28);ctx.shadowColor=th[1];ctx.shadowBlur=17;
-    ctx.fill();ctx.shadowBlur=0;ctx.strokeStyle=th[0];ctx.lineWidth=4;ctx.stroke();
-    ctx.beginPath();ctx.ellipse(0,24,88,11,0,0,Math.PI*2);
-    ctx.fillStyle=th[2];ctx.fill();ctx.strokeStyle=th[0];ctx.lineWidth=3;ctx.stroke();
-    ctx.beginPath();ctx.moveTo(0,-8);ctx.lineTo(17,8);ctx.lineTo(0,23);ctx.lineTo(-17,8);ctx.closePath();
-    ctx.fillStyle='#fff';ctx.shadowColor=th[1];ctx.shadowBlur=18;ctx.fill();ctx.restore();
-    // Tên nổi khối: chữ chính là tâm điểm, hai cánh ôm sát hai bên.
-    ctx.font='900 81px Georgia,serif';
-    ctx.lineJoin='round';ctx.lineWidth=15;
-    ctx.strokeStyle='rgba(30,12,10,.95)';ctx.strokeText(name,cx,cy,530);
-    ctx.lineWidth=7;ctx.strokeStyle=th[2];ctx.strokeText(name,cx,cy,530);
-    ctx.fillStyle=metallic(cx-180,cy-58,cx+160,cy+44);
-    ctx.shadowColor=th[1];ctx.shadowBlur=14;ctx.fillText(name,cx,cy,530);ctx.shadowBlur=0;
-    ctx.font='700 27px Georgia,serif';ctx.fillStyle=th[0];
-    ctx.shadowColor=th[1];ctx.shadowBlur=9;
-    ctx.fillText('✦  '+frame.toUpperCase()+'  ✦',cx,cy+66);
-    ctx.shadowBlur=0;
-    for(const side of [-1,1]){
-      for(let j=0;j<3;j++){
-        const x=cx+side*(488+j*50),y=cy-70+j*51;
-        ctx.beginPath();ctx.moveTo(x,y-10);ctx.lineTo(x+8,y);
-        ctx.lineTo(x,y+10);ctx.lineTo(x-8,y);ctx.closePath();
-        ctx.fillStyle=th[0];ctx.shadowColor=th[1];ctx.shadowBlur=14;ctx.fill();
-      }
-    }
-    ctx.shadowBlur=0;
-  }else{
-    // Tên thường không có cánh, viền hay huy hiệu.
-    ctx.font='bold 81px system-ui,sans-serif';
-    ctx.lineWidth=9;ctx.strokeStyle='rgba(4,8,24,.85)';
-    ctx.strokeText(name,768,212,960);
-    ctx.fillStyle='#ffffff';ctx.fillText(name,768,212,960);
-  }
+  const th=themes[frame];
+  const name=String(text).slice(0,22);
   const tex=new THREE.CanvasTexture(cv);tex.minFilter=THREE.LinearFilter;
   const spr=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false}));
-  spr.scale.set(th?3.05:1.95,th?0.76:0.49,1);
-  spr.position.y=2.06;spr.userData.labelTexture=tex;
+  spr.scale.set(th?2.75:1.95,th?0.69:0.49,1);
+  spr.position.y=2.02;spr.userData.labelTexture=tex;
+
+  if(!th){
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.font='bold 57px system-ui,sans-serif';
+    ctx.lineWidth=7;ctx.strokeStyle='rgba(4,8,24,.85)';ctx.strokeText(name,512,140,650);
+    ctx.fillStyle='#ffffff';ctx.fillText(name,512,140,650);
+    return spr;
+  }
+
+  // ---------- Lớp tĩnh: vẽ MỘT lần vào canvas phụ ----------
+  const base=document.createElement('canvas');base.width=1024;base.height=256;
+  const b=base.getContext('2d');
+  const CY=150; // tâm bảng tên
+
+  const gem=(x,y,r,col)=>{
+    const g=b.createRadialGradient(x-r*.3,y-r*.3,r*.1,x,y,r);
+    g.addColorStop(0,'#ffffff');g.addColorStop(.35,col);g.addColorStop(1,'rgba(20,0,20,.75)');
+    b.beginPath();b.arc(x,y,r,0,6.283);b.fillStyle=g;b.shadowColor=col;b.shadowBlur=r;b.fill();
+    b.shadowBlur=0;b.lineWidth=Math.max(1.5,r*.18);b.strokeStyle=th.l;b.stroke();
+    b.beginPath();b.arc(x-r*.3,y-r*.3,r*.18,0,6.283);b.fillStyle='#fff';b.fill();
+  };
+  const metal=(x0,y0,x1,y1)=>{
+    const g=b.createLinearGradient(x0,y0,x1,y1);
+    g.addColorStop(0,th.l);g.addColorStop(.5,th.m);g.addColorStop(1,th.d);return g;
+  };
+
+  // Cánh: các lưỡi lông cong hình liềm, vuốt lên ở đầu cánh như cánh phượng trong game
+  const sets = th.t===3 ? [{s:1,n:8},{s:.7,n:7},{s:.45,n:6}]
+             : th.t===2 ? [{s:1,n:8},{s:.68,n:7}]
+             :            [{s:1,n:7},{s:.64,n:6}];
+  for(const side of [-1,1]){
+    b.save();b.translate(512+side*205,CY+4);b.scale(side,1);
+    sets.forEach((st,li)=>{
+      for(let k=st.n-1;k>=0;k--){
+        const u=k/(st.n-1);
+        const a=-1.0+u*1.1;
+        const L=(125+Math.pow(u,0.9)*140)*st.s;
+        const w=(20+u*8)*st.s;
+        const tx=Math.cos(a)*L, ty=Math.sin(a)*L-L*0.16;
+        const len=Math.hypot(tx,ty), dx=tx/len, dy=ty/len, nx=dy, ny=-dx;
+        const mx=tx*0.5, my=ty*0.5;
+        const c1x=mx+nx*w*1.7, c1y=my+ny*w*1.7;
+        const c2x=mx-nx*w*0.7, c2y=my-ny*w*0.7;
+        const path=()=>{
+          b.beginPath();b.moveTo(0,0);
+          b.quadraticCurveTo(c1x,c1y,tx,ty);
+          b.quadraticCurveTo(c2x,c2y,0,0);b.closePath();
+        };
+        const g=b.createLinearGradient(0,0,tx,ty);
+        g.addColorStop(0,th.d);g.addColorStop(.5,th.m);g.addColorStop(1,th.l);
+        path();b.fillStyle=g;b.shadowColor=th.m;b.shadowBlur=li?4:9;b.fill();b.shadowBlur=0;
+        path();b.strokeStyle='rgba(255,255,255,.75)';b.lineWidth=1.6;b.stroke();
+        b.beginPath();b.moveTo(len*0.05*dx,len*0.05*dy);
+        b.quadraticCurveTo(mx+nx*w*0.5,my+ny*w*0.5,tx*0.94,ty*0.94);
+        b.strokeStyle='rgba(255,255,255,.6)';b.lineWidth=1.3;b.stroke();
+        if(li===0){b.beginPath();b.arc(tx,ty,3,0,6.283);b.fillStyle='#fff';b.shadowColor=th.l;b.shadowBlur=8;b.fill();b.shadowBlur=0;}
+      }
+    });
+    b.restore();
+  }
+
+  // Bảng tên: hình lục giác dài, hai đầu nhọn, nền tím đậm + viền kim loại kép
+  const plate=(inset)=>{
+    const i=inset;
+    b.beginPath();
+    b.moveTo(287+i*1.2,CY);b.lineTo(315+i*0.6,CY-48+i);b.lineTo(709-i*0.6,CY-48+i);
+    b.lineTo(737-i*1.2,CY);b.lineTo(709-i*0.6,CY+48-i);b.lineTo(315+i*0.6,CY+48-i);b.closePath();
+  };
+  b.save();b.lineJoin='round';
+  plate(0);
+  const pg=b.createLinearGradient(0,CY-48,0,CY+48);
+  pg.addColorStop(0,'#35198a');pg.addColorStop(1,'#0e0530');
+  b.fillStyle=pg;b.shadowColor='#000';b.shadowBlur=14;b.fill();b.shadowBlur=0;
+  const tint=b.createLinearGradient(0,CY-48,0,CY+48);
+  tint.addColorStop(0,'rgba(255,255,255,.10)');tint.addColorStop(1,th.d+'88');
+  b.fillStyle=tint;b.fill();
+  b.lineWidth=7;b.strokeStyle=metal(287,CY-48,737,CY+48);b.stroke();
+  plate(9);b.lineWidth=2;b.strokeStyle='rgba(255,255,255,.55)';b.stroke();
+  b.restore();
+
+  // Huy hiệu ngọc hai đầu bảng
+  for(const side of [-1,1]){
+    const x=512+side*214;
+    b.beginPath();b.arc(x,CY,24,0,6.283);b.fillStyle=metal(x-24,CY-24,x+24,CY+24);
+    b.shadowColor=th.m;b.shadowBlur=10;b.fill();b.shadowBlur=0;
+    b.lineWidth=2;b.strokeStyle='rgba(255,255,255,.7)';b.stroke();
+    gem(x,CY,13,th.g);
+  }
+
+  // Mũi nhọn dưới bảng
+  b.beginPath();b.moveTo(486,CY+46);b.lineTo(512,CY+76);b.lineTo(538,CY+46);b.closePath();
+  b.fillStyle=metal(486,CY+46,538,CY+76);b.shadowColor=th.m;b.shadowBlur=8;b.fill();b.shadowBlur=0;
+  b.strokeStyle='rgba(255,255,255,.6)';b.lineWidth=1.5;b.stroke();
+  gem(512,CY+54,6,th.g);
+
+  // Vương miện / mào phía trên bảng
+  {
+    const n=th.t===1?3:5;
+    const hs = n===3 ? [34,54,34] : [30,46,62,46,30];
+    const mul = th.t===3?1.12:1;
+    const W=34+th.t*14, seg=2*W/n, top=CY-48+2;
+    b.save();b.translate(512,top);
+    b.beginPath();b.moveTo(-W,0);
+    for(let i=0;i<n;i++){
+      const lx=-W+i*seg;
+      b.lineTo(lx+seg/2,-hs[i]*mul);
+      b.lineTo(lx+seg,i===n-1?0:-9);
+    }
+    b.closePath();
+    const cg=b.createLinearGradient(0,-70,0,0);
+    cg.addColorStop(0,th.l);cg.addColorStop(.55,th.m);cg.addColorStop(1,th.d);
+    b.fillStyle=cg;b.shadowColor=th.m;b.shadowBlur=11;b.fill();b.shadowBlur=0;
+    b.lineJoin='round';b.strokeStyle='rgba(255,255,255,.75)';b.lineWidth=2;b.stroke();
+    if(th.t>=2){
+      for(let i=0;i<n;i++){
+        const tx=-W+i*seg+seg/2;
+        gem(tx,-hs[i]*mul-3,i===(n>>1)?8:5,i%2?th.g:'#ffffff');
+      }
+    }
+    gem(0,-hs[n>>1]*mul*0.45,th.t===3?11:9,th.g);
+    b.restore();
+  }
+
+  // ---------- Ngôi sao lấp lánh ----------
+  const seed=[...name].reduce((a,c)=>a+c.charCodeAt(0),7);
+  const rnd=i=>{const x=Math.sin(seed*12.9898+i*78.233)*43758.5453;return x-Math.floor(x);};
+  const sparks=[];
+  for(let i=0;i<18;i++){
+    sparks.push({
+      x:512+(i%2?1:-1)*(110+rnd(i)*360),
+      y:22+rnd(i+50)*210,
+      r:7+rnd(i+90)*12,
+      ph:rnd(i+20)*6.28,
+      sp:2.2+rnd(i+30)*3
+    });
+  }
+  const star=(x,y,r,a,col)=>{
+    if(a<=0.02)return;
+    ctx.save();ctx.translate(x,y);ctx.globalAlpha=Math.min(1,a);
+    ctx.fillStyle=col;ctx.shadowColor=col;ctx.shadowBlur=r*1.3;
+    ctx.beginPath();
+    for(let i=0;i<8;i++){
+      const ang=i*Math.PI/4-Math.PI/2;
+      const rad=i%2?r*0.2:r;
+      ctx.lineTo(Math.cos(ang)*rad,Math.sin(ang)*rad);
+    }
+    ctx.closePath();ctx.fill();
+    ctx.fillStyle='#fff';ctx.shadowBlur=0;
+    ctx.beginPath();ctx.arc(0,0,r*0.16,0,6.283);ctx.fill();
+    ctx.restore();
+  };
+
+  // ---------- Mỗi khung hình: lớp tĩnh + vệt sáng quét + sao + tên ----------
+  function draw(t){
+    ctx.globalCompositeOperation='source-over';
+    ctx.clearRect(0,0,1024,256);
+    ctx.drawImage(base,0,0);
+    // Vệt sáng chéo quét qua toàn bộ khung (chỉ tác động lên phần đã có hình)
+    const p=((t*0.5)%1.7)*1500-300;
+    const hg=ctx.createLinearGradient(p-70,0,p+70,70);
+    hg.addColorStop(0,'rgba(255,255,255,0)');
+    hg.addColorStop(.5,'rgba(255,255,255,.5)');
+    hg.addColorStop(1,'rgba(255,255,255,0)');
+    ctx.globalCompositeOperation='source-atop';
+    ctx.fillStyle=hg;ctx.fillRect(0,0,1024,256);
+    ctx.globalCompositeOperation='source-over';
+    sparks.forEach(s=>{
+      const a=Math.pow(Math.max(0,Math.sin(t*s.sp+s.ph)),3);
+      star(s.x,s.y,s.r*(0.6+0.5*a),a,a>0.6?'#ffffff':th.l);
+    });
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.font='900 52px system-ui,sans-serif';
+    ctx.lineWidth=7;ctx.strokeStyle='rgba(5,9,25,.95)';ctx.strokeText(name,512,CY+2,370);
+    const tg=ctx.createLinearGradient(0,CY-26,0,CY+30);tg.addColorStop(0,'#ffffff');tg.addColorStop(.5,th.l);tg.addColorStop(1,th.m);
+    ctx.fillStyle=tg;ctx.shadowColor=th.m;ctx.shadowBlur=12;
+    ctx.fillText(name,512,CY+2,370);ctx.shadowBlur=0;
+    tex.needsUpdate=true;
+  }
+  draw(0);
+  spr.userData.animated=true;
+  spr.userData.draw=draw;
   return spr;
 }
 function updateNameplates(){
@@ -1352,11 +1386,9 @@ function updateEntrance(dt,t) {
       activeEntrance={d,elapsed:0};
       // Camera must cut to the entrance BEFORE showing the new dancer.
       const follow=new THREE.Vector3(d.startX*0.7,3.7,Math.min(17,d.startZ+5));
-      if(!orbitEnabled){
-        camera.position.copy(follow);
-        entranceCameraTarget.set(d.startX,1.15,d.startZ);
-        camera.lookAt(entranceCameraTarget);
-      }
+      camera.position.copy(follow);
+      entranceCameraTarget.set(d.startX,1.15,d.startZ);
+      camera.lookAt(entranceCameraTarget);
       d.mesh.position.set(d.startX,0,d.startZ);
       d.pendingEntrance=false;d.mesh.visible=true;
     }
@@ -1373,7 +1405,6 @@ function updateEntrance(dt,t) {
 }
 function updateEntranceCamera(dt,t){
   if(!camera||!cameraHome)return;
-  if(orbitEnabled){applyOrbitCamera();return;}
   const a=performance.now()<entryBurstNoZoomUntil?null:activeEntrance;
   const home=cameraHome;
   let wanted=home;
@@ -1810,6 +1841,12 @@ function animate() {
   updateEntrance(dt,t);
   updateGuestDj(dt);
   updateMc(dt,t);
+  // Vẽ lại khung tên có cánh (chỉ những tên có khung mới chuyển động)
+  if (t - lastLabelAnim > (isMobile ? 0.12 : 0.07)) {
+    lastLabelAnim = t;
+    dancers.forEach(d => { if (d.label && d.label.userData.animated) d.label.userData.draw(t); });
+    if (mcNameLabel && mcNameLabel.userData.animated) mcNameLabel.userData.draw(t);
+  }
   if(mcPersonName){const mcDancer=dancers.find(d=>d.name.toLowerCase()===mcPersonName.toLowerCase());if(mcDancer)mcDancer.mesh.visible=false;}
   dancers.forEach(d => {
     if(d.entering || (guestDjTravel && guestDjTravel.d===d)) {
