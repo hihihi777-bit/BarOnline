@@ -215,6 +215,7 @@ let mcEnabled = true, mcAnchor = null, mcAvatar = null, mcBubble = null, mcBubbl
 let mcPersonName = ''; // Giữ khung tên gốc khi khách được chọn làm MC
 let mcZoomUntil=0;
 let renamedDancerName='', renameZoomUntil=0;
+let initialRoomStateReceived=false;
 let lastLabelAnim = 0; // Nhịp vẽ lại khung tên chuyển động
 let mcPhraseIndex = 0, mcNextPhraseAt = 0, mcBubbleUntil = 0;
 const MC_PHRASES = ['Yêu ai yêu ai?', 'Giơ tay lên nào!', 'Ở đây ai yêu anh nhất?', 'Anh em đã sẵn sàng chưa?', 'Hey Hey Hey!'];
@@ -1453,8 +1454,21 @@ function zoomToRenamedPerson(name){
   renamedDancerName=n;
   renameZoomUntil=performance.now()+4200;
 }
+function applyFrameState(frames){
+  if(!frames || typeof frames!=='object')return;
+  const changed=[];
+  for(const d of dancers){
+    const oldFrame=nameFrames[d.name.toLowerCase()]||'none';
+    const newFrame=frames[d.name.toLowerCase()]||'none';
+    if(oldFrame!==newFrame)changed.push(d.name);
+  }
+  nameFrames=frames;
+  updateNameplates();
+  if(mcPersonName){const chosen=mcPersonName;mcPersonName='';setMcPerson(chosen);}
+  if(initialRoomStateReceived && changed.length===1)zoomToRenamedPerson(changed[0]);
+}
 function applyState(st) {
-  if(st.nameFrames && typeof st.nameFrames==='object'){nameFrames=st.nameFrames;updateNameplates();if(mcPersonName){const chosen=mcPersonName;mcPersonName='';setMcPerson(chosen);}}
+  if(st.nameFrames && typeof st.nameFrames==='object')applyFrameState(st.nameFrames);
   if (typeof st.ttsKey === 'string') setTtsKey(st.ttsKey);
   if (typeof st.mcEnabled === 'boolean' && st.mcEnabled!==mcEnabled) setMcEnabled(st.mcEnabled);
   if (st.song) setSong(st.song);
@@ -1462,7 +1476,7 @@ function applyState(st) {
   if (typeof st.musicUrl === 'string') setStageMusic(st.musicUrl, st.musicRevision);
   if (Array.isArray(st.names)) {
     const incoming = st.names.map(n => String(n).trim()).filter(Boolean);
-    const newOnes = incoming.filter(n => !knownNames.has(n.toLowerCase()));
+    const newOnes = initialRoomStateReceived ? incoming.filter(n => !knownNames.has(n.toLowerCase())) : [];
     // Nhận diện một lần đổi tên: số người không đổi, đúng một tên cũ biến mất
     // và đúng một tên mới xuất hiện. Không nhầm với thêm hoặc xóa khách.
     const oldLower=new Set(allNames.map(n=>n.toLowerCase()));
@@ -1471,10 +1485,26 @@ function applyState(st) {
     const added=incoming.filter(n=>!oldLower.has(n.toLowerCase()));
     const renamed=(allNames.length===incoming.length && removed.length===1 && added.length===1)
       ? added[0] : '';
+    if(renamed){
+      const oldName=removed[0],newName=added[0];
+      const dancer=dancers.find(d=>d.name.toLowerCase()===oldName.toLowerCase());
+      if(dancer){
+        dancer.name=newName;
+        if(dancer.label){dancer.avatar.remove(dancer.label);dancer.label.material.map.dispose();dancer.label.material.dispose();}
+        dancer.frame=nameFrames[newName.toLowerCase()]||'none';
+        dancer.label=makeLabel(newName,dancer.frame);
+        dancer.avatar.add(dancer.label);
+      }
+    }
     allNames = incoming.slice(0, MAX_TOTAL);
     knownNames = new Set(allNames.map(n => n.toLowerCase()));
     rebuildVisual();
-    if(renamed)zoomToRenamedPerson(renamed);
+    if(!initialRoomStateReceived){
+      // Người mới kết nối: danh sách hiện có là trạng thái nền, không phải khách mới.
+      cancelAllEntrances();
+      dancers.forEach(finishEntrance);
+      initialRoomStateReceived=true;
+    }else if(renamed)zoomToRenamedPerson(renamed);
     if(typeof st.mcPersonName==='string')setMcPerson(st.mcPersonName);
     newOnes.slice(-3).forEach(n => showJoinToast(n));
     if(typeof st.guestDjName==='string')setGuestDj(st.guestDjName,st.specialDanceStyle);
@@ -1516,6 +1546,13 @@ function handleMsg(data) {
     if(oldName && newName){
       const idx=allNames.findIndex(n=>n.toLowerCase()===oldName.toLowerCase());
       if(idx>=0){
+        const dancer=dancers.find(d=>d.name.toLowerCase()===oldName.toLowerCase());
+        if(dancer){
+          dancer.name=newName;
+          if(dancer.label){dancer.avatar.remove(dancer.label);dancer.label.material.map.dispose();dancer.label.material.dispose();}
+          dancer.frame=nameFrames[newName.toLowerCase()]||'none';
+          dancer.label=makeLabel(newName,dancer.frame);dancer.avatar.add(dancer.label);
+        }
         allNames[idx]=newName;
         knownNames=new Set(allNames.map(n=>n.toLowerCase()));
         rebuildVisual();
@@ -1526,7 +1563,7 @@ function handleMsg(data) {
   if (data.type === 'guest-dj') setGuestDj(data.name,data.style);
   if (data.type === 'mc-toggle') setMcEnabled(data.enabled);
   if (data.type === 'mc-person') setMcPerson(data.name);
-  if(data.type==='name-frames' && data.frames && typeof data.frames==='object'){nameFrames=data.frames;updateNameplates();if(mcPersonName){const chosen=mcPersonName;mcPersonName='';setMcPerson(chosen);}}
+  if(data.type==='name-frames' && data.frames && typeof data.frames==='object')applyFrameState(data.frames);
   if (data.type === 'dj-label') setDjLabel(data.text);
   if (data.type === 'music') setStageMusic(data.url, data.revision);
   if (data.type === 'music-stop') setStageMusic('', data.revision);
@@ -1553,6 +1590,7 @@ function handleMsg(data) {
 }
 
 function connectRoom(code) {
+  initialRoomStateReceived=false;
   code = (code || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
   if (code.length < 4) {
     document.getElementById('join-msg').textContent = 'Mã phòng không hợp lệ';
