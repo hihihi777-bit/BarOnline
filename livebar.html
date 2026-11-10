@@ -211,6 +211,8 @@ let joinQueue = [], joinShowing = false;
 let entranceQueue = [], activeEntrance = null;
 let entryBurstTimer = null, entryBurstNames = [], entryBurstNoZoomUntil = 0;
 let guestDjName = "", guestDjTravel = null, danceZoomUntil = 0;
+const DANCE_PODIUM_X=2.10, DANCE_PODIUM_Z=-5.40, DANCE_PODIUM_Y=1.87;
+let dancePodium=null, dancePodiumRing=null;
 let mcEnabled = true, mcAnchor = null, mcAvatar = null, mcBubble = null, mcBubbleCanvas = null, mcBubbleTexture = null, mcNameLabel = null;
 let mcPersonName = ''; // Giữ khung tên gốc khi khách được chọn làm MC
 let mcZoomUntil=0;
@@ -736,7 +738,15 @@ function initScene() {
   mcPodium.position.set(-2.10,djPlatformHeight+0.10,-5.40);scene.add(mcPodium);
   const mcPodiumRing=new THREE.Mesh(new THREE.TorusGeometry(0.67,0.035,8,32),new THREE.MeshBasicMaterial({color:0x00eaff}));
   mcPodiumRing.rotation.x=Math.PI/2;mcPodiumRing.position.set(-2.10,djPlatformHeight+0.21,-5.40);scene.add(mcPodiumRing);
-  mcAvatar=createChar('#00dfff');
+  // Bục biểu diễn bên PHẢI sân khấu, đối xứng với bục MC bên trái.
+  dancePodium=new THREE.Mesh(new THREE.CylinderGeometry(0.70,0.78,0.20,32),new THREE.MeshStandardMaterial({color:0x24143c,metalness:0.65,roughness:0.24,emissive:0x3b1268,emissiveIntensity:0.32}));
+  dancePodium.position.set(DANCE_PODIUM_X,djPlatformHeight+0.10,DANCE_PODIUM_Z);
+  scene.add(dancePodium);
+  dancePodiumRing=new THREE.Mesh(new THREE.TorusGeometry(0.72,0.045,8,36),new THREE.MeshBasicMaterial({color:0xff46d7}));
+  dancePodiumRing.rotation.x=Math.PI/2;
+  dancePodiumRing.position.set(DANCE_PODIUM_X,djPlatformHeight+0.22,DANCE_PODIUM_Z);
+  scene.add(dancePodiumRing);
+    mcAvatar=createChar('#00dfff');
   // Tách vị trí bục khỏi animation: animateChar thay đổi position.y mỗi frame.
   mcAnchor=new THREE.Group();
   mcAnchor.position.set(-2.10,djPlatformHeight+0.22,-5.40);
@@ -1210,22 +1220,43 @@ function setGuestDj(name,style){
   const next=String(name||'').trim();
   if(next && !dancers.some(d=>d.name.toLowerCase()===next.toLowerCase()))return;
   const changed=guestDjName.toLowerCase()!==next.toLowerCase() || (next && newStyle!==specialDanceStyle);
+  // Trả người biểu diễn trước về sàn khi thay người hoặc kết thúc.
+  const previous=dancers.find(d=>d.name.toLowerCase()===guestDjName.toLowerCase());
+  if(previous){previous.mesh.position.set(previous.targetX,0,previous.targetZ);}
   guestDjName=next;
   specialDanceStyle=newStyle;
-  guestDjTravel=null; // Không di chuyển lên bục DJ nữa.
+  guestDjTravel=null;
   if(next){
     const d=dancers.find(d=>d.name.toLowerCase()===next.toLowerCase());
     if(d){
       d.pendingEntrance=false;d.entering=false;d.mesh.visible=true;
       entranceQueue=entranceQueue.filter(x=>x!==d);
       if(activeEntrance?.d===d)activeEntrance=null;
-      d.mesh.position.set(d.targetX??d.mesh.position.x,0,d.targetZ??d.mesh.position.z);
-      if(changed) danceZoomUntil=performance.now()+3000;
+      if(changed) danceZoomUntil=performance.now()+2500;
     }
-  } else danceZoomUntil=0;
+  }else danceZoomUntil=0;
 }
 function updateGuestDj(dt){
-  // Giữ người đổi điệu nhảy tại chỗ trong sàn.
+  const active=guestDjName && performance.now()<danceZoomUntil;
+  const dancer=dancers.find(d=>d.name.toLowerCase()===guestDjName.toLowerCase());
+  if(!dancer)return;
+  if(active){
+    dancer.mesh.position.set(DANCE_PODIUM_X,DANCE_PODIUM_Y,DANCE_PODIUM_Z);
+    dancer.mesh.rotation.y=0;
+  }else{
+    dancer.mesh.position.set(dancer.targetX,0,dancer.targetZ);
+  }
+}
+function updateSpotlightLabelVisibility(){
+  const now=performance.now();
+  const renameActive=renamedDancerName && now<renameZoomUntil;
+  const danceActive=!renameActive && guestDjName && now<danceZoomUntil;
+  const focus=renameActive?renamedDancerName:(danceActive?guestDjName:'');
+  for(const d of dancers){
+    if(d.label)d.label.visible=!focus || d.name.toLowerCase()===focus.toLowerCase();
+  }
+  if(mcNameLabel)mcNameLabel.visible=mcEnabled && (!focus || mcPersonName.toLowerCase()===focus.toLowerCase());
+  if(mcBubble && focus)mcBubble.visible=false;
 }
 function updateEntrance(dt,t) {
   if(!activeEntrance && entranceQueue.length && performance.now()>=entryBurstNoZoomUntil){
@@ -1272,21 +1303,22 @@ function updateEntranceCamera(dt,t){
     const dancer=dancers.find(d=>d.name.toLowerCase()===renamedDancerName.toLowerCase());
     if(dancer && dancer.mesh.visible){
       const pos=dancer.mesh.position;
-      wanted=new THREE.Vector3(pos.x*0.78,3.0,pos.z+5.2);
-      look.set(pos.x,1.5,pos.z);
+      // Góc máy cao, cận cảnh: không bị các khung VIP của người khác chắn.
+      wanted=new THREE.Vector3(pos.x,4.0,pos.z+4.0);
+      look.set(pos.x,1.65,pos.z);
     }else if(mcEnabled && mcPersonName.toLowerCase()===renamedDancerName.toLowerCase()){
       // Chỉ zoom vào bục MC nếu chính MC là người được đổi tên/khung.
       wanted=new THREE.Vector3(-1.1,3.7,1.5);
       look.set(-2.10,djPlatformHeight+1.65,-5.40);
     }
   }
-  // Zoom vào người đổi điệu nhảy ngay trên sàn trong 3 giây.
+  // Zoom vào người đổi điệu nhảy trên bục riêng đối diện MC trong 2,5 giây.
   if(!a && performance.now()>=renameZoomUntil && guestDjName && performance.now()<danceZoomUntil){
     const dancer=dancers.find(d=>d.name.toLowerCase()===guestDjName.toLowerCase());
     if(dancer && dancer.mesh.visible){
       const pos=dancer.mesh.position;
-      wanted=new THREE.Vector3(pos.x*0.75,3.25,pos.z+5.6);
-      look.set(pos.x,1.35,pos.z);
+      wanted=new THREE.Vector3(DANCE_PODIUM_X+0.65,4.2,DANCE_PODIUM_Z+4.1);
+      look.set(DANCE_PODIUM_X,DANCE_PODIUM_Y+1.3,DANCE_PODIUM_Z);
     }
   }
   // Khi chọn người làm MC, camera zoom về bục MC trong vài giây rồi trả về toàn cảnh.
@@ -1778,6 +1810,7 @@ function animate() {
   updateEntrance(dt,t);
   updateGuestDj(dt);
   updateMc(dt,t);
+  updateSpotlightLabelVisibility();
   // Vẽ lại khung tên có cánh (chỉ những tên có khung mới chuyển động)
   if (t - lastLabelAnim > (isMobile ? 0.12 : 0.07)) {
     lastLabelAnim = t;
@@ -1798,9 +1831,10 @@ function animate() {
       ud.armL.rotation.z=0.25;ud.armR.rotation.z=-0.25;
     } else if(d.name.toLowerCase()===guestDjName.toLowerCase()) {
       animateSpecialDance(d.avatar,dt,t,specialDanceStyle);
-      d.mesh.position.x=d.targetX;
-      d.mesh.position.y=0;
-      d.mesh.position.z=d.targetZ;
+      const onPodium=performance.now()<danceZoomUntil;
+      d.mesh.position.x=onPodium?DANCE_PODIUM_X:d.targetX;
+      d.mesh.position.y=onPodium?DANCE_PODIUM_Y:0;
+      d.mesh.position.z=onPodium?DANCE_PODIUM_Z:d.targetZ;
       d.mesh.rotation.y=Math.sin(t*(specialDanceStyle==='disco'?3.2:2.1))*(specialDanceStyle==='disco'?0.55:0.20);
     } else animateChar(d.avatar,dt,1);
   });
