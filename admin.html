@@ -232,7 +232,7 @@ function connectLive() {
   let completed = false;
   const timeout = setTimeout(() => {
     if (!completed) { connecting = false; try { c.close(); } catch(e) {} setStatus('Không tìm thấy Live · đang thử lại...', false); scheduleReconnect(); }
-  }, 10000);
+  }, 6000);
   c.on('open', () => {
     completed = true; clearTimeout(timeout); connecting = false;
     connections.forEach(old => { if (old !== c) try { old.close(); } catch(e) {} });
@@ -254,7 +254,7 @@ function connectLive() {
 }
 function scheduleReconnect() {
   clearTimeout(reconnectTimer);
-  reconnectTimer = setTimeout(connectLive, 4000);
+  reconnectTimer = setTimeout(connectLive, 1200);
 }
 function initAdminPeer() {
   if (peer) try { peer.destroy(); } catch(e) {}
