@@ -801,13 +801,13 @@ function makeLabel(text, frame='none') {
     ice:   {l:'#f0ffff',m:'#45dfff',d:'#1f63cf',g:'#ffffff',t:1},
     fire:  {l:'#fff0b8',m:'#ff713d',d:'#b3162f',g:'#ffd24a',t:1},
     galaxy:{l:'#f8e8ff',m:'#b58aff',d:'#4a38d8',g:'#ff7ad9',t:2},
-    royal: {l:'#fff6cf',m:'#ffd24a',d:'#c42a14',g:'#3bd8ff',t:3}
+    royal: {l:'#fff9da',m:'#f7c34c',d:'#8c430c',g:'#e52c48',t:3}
   };
   const th=themes[frame];
   const name=String(text).slice(0,22);
   const tex=new THREE.CanvasTexture(cv);tex.minFilter=THREE.LinearFilter;
   const spr=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false}));
-  spr.scale.set(th?2.75:1.95,th?0.69:0.49,1);
+  spr.scale.set(th?3.05:1.95,th?0.77:0.49,1);
   spr.position.y=2.02;spr.userData.labelTexture=tex;
 
   if(!th){
@@ -821,7 +821,7 @@ function makeLabel(text, frame='none') {
   // ---------- Lớp tĩnh: vẽ MỘT lần vào canvas phụ ----------
   const base=document.createElement('canvas');base.width=1024;base.height=256;
   const b=base.getContext('2d');
-  const CY=150; // tâm bảng tên
+  const CY=145; // tâm bảng tên, chừa khoảng cho vương miện và tua vàng
 
   const gem=(x,y,r,col)=>{
     const g=b.createRadialGradient(x-r*.3,y-r*.3,r*.1,x,y,r);
@@ -836,7 +836,7 @@ function makeLabel(text, frame='none') {
   };
 
   // Cánh: các lưỡi lông cong hình liềm, vuốt lên ở đầu cánh như cánh phượng trong game
-  const sets = th.t===3 ? [{s:1,n:8},{s:.7,n:7},{s:.45,n:6}]
+  const sets = th.t===3 ? [{s:1,n:9},{s:.76,n:8},{s:.52,n:7}]
              : th.t===2 ? [{s:1,n:8},{s:.68,n:7}]
              :            [{s:1,n:7},{s:.64,n:6}];
   for(const side of [-1,1]){
@@ -844,8 +844,8 @@ function makeLabel(text, frame='none') {
     sets.forEach((st,li)=>{
       for(let k=st.n-1;k>=0;k--){
         const u=k/(st.n-1);
-        const a=-1.0+u*1.1;
-        const L=(125+Math.pow(u,0.9)*140)*st.s;
+        const a=-0.92+u*1.05;
+        const L=(128+Math.pow(u,0.9)*154)*st.s;
         const w=(20+u*8)*st.s;
         const tx=Math.cos(a)*L, ty=Math.sin(a)*L-L*0.16;
         const len=Math.hypot(tx,ty), dx=tx/len, dy=ty/len, nx=dy, ny=-dx;
@@ -858,7 +858,7 @@ function makeLabel(text, frame='none') {
           b.quadraticCurveTo(c2x,c2y,0,0);b.closePath();
         };
         const g=b.createLinearGradient(0,0,tx,ty);
-        g.addColorStop(0,th.d);g.addColorStop(.5,th.m);g.addColorStop(1,th.l);
+        g.addColorStop(0,th.d);g.addColorStop(.28,th.m);g.addColorStop(.58,th.l);g.addColorStop(.82,th.m);g.addColorStop(1,th.d);
         path();b.fillStyle=g;b.shadowColor=th.m;b.shadowBlur=li?4:9;b.fill();b.shadowBlur=0;
         path();b.strokeStyle='rgba(255,255,255,.75)';b.lineWidth=1.6;b.stroke();
         b.beginPath();b.moveTo(len*0.05*dx,len*0.05*dy);
@@ -867,6 +867,25 @@ function makeLabel(text, frame='none') {
         if(li===0){b.beginPath();b.arc(tx,ty,3,0,6.283);b.fillStyle='#fff';b.shadowColor=th.l;b.shadowBlur=8;b.fill();b.shadowBlur=0;}
       }
     });
+    b.restore();
+  }
+
+  // Trang sức hoàng gia: các lớp giáp vàng chạm trổ đối xứng hai đầu.
+  for(const side of [-1,1]){
+    b.save();b.translate(512+side*207,CY);b.scale(side,1);
+    for(let k=0;k<4;k++){
+      const y=(k-1.5)*18;
+      b.beginPath();b.moveTo(0,y-9);
+      b.bezierCurveTo(40,y-30,100+k*13,y-23,148+k*10,y-39);
+      b.bezierCurveTo(127+k*10,y-5,69,y+17,5,y+11);b.closePath();
+      const fil=b.createLinearGradient(0,y-30,150,y+20);
+      fil.addColorStop(0,th.d);fil.addColorStop(.32,th.m);fil.addColorStop(.55,th.l);fil.addColorStop(.8,th.m);fil.addColorStop(1,th.d);
+      b.fillStyle=fil;b.shadowColor=th.m;b.shadowBlur=6;b.fill();b.shadowBlur=0;
+      b.strokeStyle='rgba(255,250,209,.85)';b.lineWidth=2;b.stroke();
+    }
+    // Đầu giáp dạng mũi giáo khắc vàng.
+    b.beginPath();b.moveTo(120,-6);b.lineTo(205,-21);b.lineTo(167,1);b.lineTo(203,20);b.lineTo(115,9);b.closePath();
+    b.fillStyle=metal(120,-20,200,20);b.fill();b.strokeStyle=th.l;b.lineWidth=2;b.stroke();
     b.restore();
   }
 
@@ -880,13 +899,14 @@ function makeLabel(text, frame='none') {
   b.save();b.lineJoin='round';
   plate(0);
   const pg=b.createLinearGradient(0,CY-48,0,CY+48);
-  pg.addColorStop(0,'#35198a');pg.addColorStop(1,'#0e0530');
+  pg.addColorStop(0,'#24133f');pg.addColorStop(.43,'#130b29');pg.addColorStop(.54,'#33204c');pg.addColorStop(1,'#070612');
   b.fillStyle=pg;b.shadowColor='#000';b.shadowBlur=14;b.fill();b.shadowBlur=0;
   const tint=b.createLinearGradient(0,CY-48,0,CY+48);
   tint.addColorStop(0,'rgba(255,255,255,.10)');tint.addColorStop(1,th.d+'88');
   b.fillStyle=tint;b.fill();
-  b.lineWidth=7;b.strokeStyle=metal(287,CY-48,737,CY+48);b.stroke();
-  plate(9);b.lineWidth=2;b.strokeStyle='rgba(255,255,255,.55)';b.stroke();
+  b.lineWidth=11;b.strokeStyle=metal(287,CY-48,737,CY+48);b.shadowColor=th.m;b.shadowBlur=9;b.stroke();b.shadowBlur=0;
+  plate(10);b.lineWidth=3;b.strokeStyle='rgba(255,246,200,.82)';b.stroke();
+  plate(15);b.lineWidth=1.5;b.strokeStyle='rgba(255,197,75,.6)';b.stroke();
   b.restore();
 
   // Huy hiệu ngọc hai đầu bảng
@@ -896,6 +916,7 @@ function makeLabel(text, frame='none') {
     b.shadowColor=th.m;b.shadowBlur=10;b.fill();b.shadowBlur=0;
     b.lineWidth=2;b.strokeStyle='rgba(255,255,255,.7)';b.stroke();
     gem(x,CY,13,th.g);
+    for(let a=0;a<8;a++){const rad=a*Math.PI/4;b.beginPath();b.moveTo(x+Math.cos(rad)*25,CY+Math.sin(rad)*25);b.lineTo(x+Math.cos(rad)*32,CY+Math.sin(rad)*32);b.strokeStyle=th.l;b.lineWidth=2;b.stroke();}
   }
 
   // Mũi nhọn dưới bảng
@@ -980,9 +1001,9 @@ function makeLabel(text, frame='none') {
       star(s.x,s.y,s.r*(0.6+0.5*a),a,a>0.6?'#ffffff':th.l);
     });
     ctx.textAlign='center';ctx.textBaseline='middle';
-    ctx.font='900 52px system-ui,sans-serif';
-    ctx.lineWidth=7;ctx.strokeStyle='rgba(5,9,25,.95)';ctx.strokeText(name,512,CY+2,370);
-    const tg=ctx.createLinearGradient(0,CY-26,0,CY+30);tg.addColorStop(0,'#ffffff');tg.addColorStop(.5,th.l);tg.addColorStop(1,th.m);
+    ctx.font='900 57px Georgia,system-ui,sans-serif';
+    ctx.lineWidth=9;ctx.strokeStyle='rgba(12,5,20,.98)';ctx.strokeText(name,512,CY+2,370);
+    const tg=ctx.createLinearGradient(0,CY-26,0,CY+30);tg.addColorStop(0,'#ffffff');tg.addColorStop(.32,'#fff8df');tg.addColorStop(.65,th.l);tg.addColorStop(1,th.m);
     ctx.fillStyle=tg;ctx.shadowColor=th.m;ctx.shadowBlur=12;
     ctx.fillText(name,512,CY+2,370);ctx.shadowBlur=0;
     tex.needsUpdate=true;
