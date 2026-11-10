@@ -835,53 +835,63 @@ function makeLabel(text, frame='none') {
     g.addColorStop(0,th.l);g.addColorStop(.5,th.m);g.addColorStop(1,th.d);return g;
   };
 
-  // Cánh: các lớp lông vũ từ lớn đến nhỏ
-  const layers = th.t===3 ? [{s:1,off:0,n:9},{s:.72,off:.06,n:8},{s:.46,off:.12,n:7}]
-               : th.t===2 ? [{s:1,off:0,n:8},{s:.66,off:.07,n:7}]
-               :            [{s:1,off:0,n:7},{s:.62,off:.07,n:6}];
+  // Cánh: các lưỡi lông cong hình liềm, vuốt lên ở đầu cánh như cánh phượng trong game
+  const sets = th.t===3 ? [{s:1,n:8},{s:.7,n:7},{s:.45,n:6}]
+             : th.t===2 ? [{s:1,n:8},{s:.68,n:7}]
+             :            [{s:1,n:7},{s:.64,n:6}];
   for(const side of [-1,1]){
-    b.save();b.translate(512+side*212,CY+2);b.scale(side,1);
-    layers.forEach((ly,li)=>{
-      for(let k=0;k<ly.n;k++){
-        const u=k/(ly.n-1);
-        const ang=-1.15+ly.off+u*1.45;
-        const L=(105+Math.pow(u,0.8)*145)*ly.s;
-        const w=(15+u*7)*ly.s;
-        b.save();b.rotate(ang);
+    b.save();b.translate(512+side*205,CY+4);b.scale(side,1);
+    sets.forEach((st,li)=>{
+      for(let k=st.n-1;k>=0;k--){
+        const u=k/(st.n-1);
+        const a=-1.0+u*1.1;
+        const L=(125+Math.pow(u,0.9)*140)*st.s;
+        const w=(20+u*8)*st.s;
+        const tx=Math.cos(a)*L, ty=Math.sin(a)*L-L*0.16;
+        const len=Math.hypot(tx,ty), dx=tx/len, dy=ty/len, nx=dy, ny=-dx;
+        const mx=tx*0.5, my=ty*0.5;
+        const c1x=mx+nx*w*1.7, c1y=my+ny*w*1.7;
+        const c2x=mx-nx*w*0.7, c2y=my-ny*w*0.7;
         const path=()=>{
           b.beginPath();b.moveTo(0,0);
-          b.quadraticCurveTo(L*0.45,-w*1.6,L,-w*0.1);
-          b.quadraticCurveTo(L*0.5,w*1.2,0,0);b.closePath();
+          b.quadraticCurveTo(c1x,c1y,tx,ty);
+          b.quadraticCurveTo(c2x,c2y,0,0);b.closePath();
         };
-        const g=b.createLinearGradient(0,0,L,0);
-        g.addColorStop(0,th.d);g.addColorStop(.45,th.m);g.addColorStop(1,th.l);
+        const g=b.createLinearGradient(0,0,tx,ty);
+        g.addColorStop(0,th.d);g.addColorStop(.5,th.m);g.addColorStop(1,th.l);
         path();b.fillStyle=g;b.shadowColor=th.m;b.shadowBlur=li?4:9;b.fill();b.shadowBlur=0;
-        path();b.strokeStyle='rgba(255,255,255,.65)';b.lineWidth=1.4;b.stroke();
-        b.beginPath();b.moveTo(L*0.06,0);b.lineTo(L*0.92,-w*0.1);
-        b.strokeStyle='rgba(255,255,255,.55)';b.lineWidth=1.2;b.stroke();
-        b.restore();
+        path();b.strokeStyle='rgba(255,255,255,.75)';b.lineWidth=1.6;b.stroke();
+        b.beginPath();b.moveTo(len*0.05*dx,len*0.05*dy);
+        b.quadraticCurveTo(mx+nx*w*0.5,my+ny*w*0.5,tx*0.94,ty*0.94);
+        b.strokeStyle='rgba(255,255,255,.6)';b.lineWidth=1.3;b.stroke();
+        if(li===0){b.beginPath();b.arc(tx,ty,3,0,6.283);b.fillStyle='#fff';b.shadowColor=th.l;b.shadowBlur=8;b.fill();b.shadowBlur=0;}
       }
     });
     b.restore();
   }
 
-  // Bảng tên: nền tối + viền kim loại kép
-  b.save();
-  b.beginPath();b.roundRect(287,CY-48,450,96,30);
+  // Bảng tên: hình lục giác dài, hai đầu nhọn, nền tím đậm + viền kim loại kép
+  const plate=(inset)=>{
+    const i=inset;
+    b.beginPath();
+    b.moveTo(287+i*1.2,CY);b.lineTo(315+i*0.6,CY-48+i);b.lineTo(709-i*0.6,CY-48+i);
+    b.lineTo(737-i*1.2,CY);b.lineTo(709-i*0.6,CY+48-i);b.lineTo(315+i*0.6,CY+48-i);b.closePath();
+  };
+  b.save();b.lineJoin='round';
+  plate(0);
   const pg=b.createLinearGradient(0,CY-48,0,CY+48);
-  pg.addColorStop(0,'#1d1236');pg.addColorStop(1,'#07040f');
+  pg.addColorStop(0,'#35198a');pg.addColorStop(1,'#0e0530');
   b.fillStyle=pg;b.shadowColor='#000';b.shadowBlur=14;b.fill();b.shadowBlur=0;
   const tint=b.createLinearGradient(0,CY-48,0,CY+48);
-  tint.addColorStop(0,'rgba(255,255,255,0)');tint.addColorStop(1,th.d+'88');
+  tint.addColorStop(0,'rgba(255,255,255,.10)');tint.addColorStop(1,th.d+'88');
   b.fillStyle=tint;b.fill();
   b.lineWidth=7;b.strokeStyle=metal(287,CY-48,737,CY+48);b.stroke();
-  b.beginPath();b.roundRect(296,CY-39,432,78,24);
-  b.lineWidth=2;b.strokeStyle='rgba(255,255,255,.5)';b.stroke();
+  plate(9);b.lineWidth=2;b.strokeStyle='rgba(255,255,255,.55)';b.stroke();
   b.restore();
 
   // Huy hiệu ngọc hai đầu bảng
   for(const side of [-1,1]){
-    const x=512+side*225;
+    const x=512+side*214;
     b.beginPath();b.arc(x,CY,24,0,6.283);b.fillStyle=metal(x-24,CY-24,x+24,CY+24);
     b.shadowColor=th.m;b.shadowBlur=10;b.fill();b.shadowBlur=0;
     b.lineWidth=2;b.strokeStyle='rgba(255,255,255,.7)';b.stroke();
@@ -972,7 +982,8 @@ function makeLabel(text, frame='none') {
     ctx.textAlign='center';ctx.textBaseline='middle';
     ctx.font='900 52px system-ui,sans-serif';
     ctx.lineWidth=7;ctx.strokeStyle='rgba(5,9,25,.95)';ctx.strokeText(name,512,CY+2,370);
-    ctx.fillStyle='#ffffff';ctx.shadowColor=th.m;ctx.shadowBlur=12;
+    const tg=ctx.createLinearGradient(0,CY-26,0,CY+30);tg.addColorStop(0,'#ffffff');tg.addColorStop(.5,th.l);tg.addColorStop(1,th.m);
+    ctx.fillStyle=tg;ctx.shadowColor=th.m;ctx.shadowBlur=12;
     ctx.fillText(name,512,CY+2,370);ctx.shadowBlur=0;
     tex.needsUpdate=true;
   }
