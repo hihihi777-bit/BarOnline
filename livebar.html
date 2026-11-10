@@ -214,6 +214,7 @@ let guestDjName = "", guestDjTravel = null, danceZoomUntil = 0;
 let mcEnabled = true, mcAnchor = null, mcAvatar = null, mcBubble = null, mcBubbleCanvas = null, mcBubbleTexture = null, mcNameLabel = null;
 let mcPersonName = ''; // Giữ khung tên gốc khi khách được chọn làm MC
 let mcZoomUntil=0;
+let lastLabelAnim = 0; // Nhịp vẽ lại khung tên chuyển động
 let mcPhraseIndex = 0, mcNextPhraseAt = 0, mcBubbleUntil = 0;
 const MC_PHRASES = ['Yêu ai yêu ai?', 'Giơ tay lên nào!', 'Ở đây ai yêu anh nhất?', 'Anh em đã sẵn sàng chưa?', 'Hey Hey Hey!'];
 function showMcPhrase(phrase) {
@@ -790,40 +791,113 @@ function createChar(colorHex, isDJ = false) {
   return g;
 }
 
+// ===== KHUNG TÊN: cánh lông vũ lấp lánh (chuyển động) =====
 function makeLabel(text, frame='none') {
   const cv=document.createElement('canvas');cv.width=1024;cv.height=256;
   const ctx=cv.getContext('2d');
   const themes={
-    gold:['#ffe69a','#ffbb37','#ad6a17'],
-    neon:['#ffd0ff','#ff4cdd','#8b43f4'],
-    ice:['#e6ffff','#45dfff','#2378e9'],
-    fire:['#ffe1a3','#ff713d','#ed295a'],
-    galaxy:['#f4dfff','#b58aff','#6651f5']
+    gold:['#fff2b8','#ffc23d','#b8741a'],
+    neon:['#ffe0ff','#ff4cdd','#8b43f4'],
+    ice:['#f0ffff','#45dfff','#2378e9'],
+    fire:['#fff0b8','#ff713d','#e6204f'],
+    galaxy:['#f8e8ff','#b58aff','#5a46f0'],
+    royal:['#fff6cf','#ffd24a','#d4351c']
   };
   const th=themes[frame];
   const name=String(text).slice(0,22);
-  ctx.clearRect(0,0,1024,256);
-  ctx.textAlign='center';ctx.textBaseline='middle';
-  if(th){
-    // Cánh đối xứng ôm hai bên tên, không có hình chữ nhật hay nền bảng.
-    const drawWing=(side)=>{
-      ctx.save();ctx.translate(512+side*178,135);ctx.scale(side,1);
-      for(let i=0;i<4;i++){
-        const y=-48+i*22;
-        const length=135-i*15;
-        const grad=ctx.createLinearGradient(0,y,length,y-28);
-        grad.addColorStop(0,th[0]);grad.addColorStop(.55,th[1]);grad.addColorStop(1,th[2]);
-        ctx.beginPath();ctx.moveTo(0,y+20);
-        ctx.bezierCurveTo(length*.26,y-14,length*.64,y-34,length,y-34-i*3);
-        ctx.bezierCurveTo(length*.79,y-1,length*.45,y+22,8,y+30);
-        ctx.closePath();ctx.fillStyle=grad;
-        ctx.shadowColor=th[1];ctx.shadowBlur=15;ctx.fill();ctx.shadowBlur=0;
-        ctx.strokeStyle='rgba(255,255,255,.55)';ctx.lineWidth=1.5;ctx.stroke();
-      }
+  const tex=new THREE.CanvasTexture(cv);tex.minFilter=THREE.LinearFilter;
+  const spr=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false}));
+  spr.scale.set(th?2.55:1.95,th?0.64:0.49,1);
+  spr.position.y=2.02;spr.userData.labelTexture=tex;
+
+  if(!th){
+    // Chưa có khung: chỉ tên thường, vẽ một lần.
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.font='bold 57px system-ui,sans-serif';
+    ctx.lineWidth=7;ctx.strokeStyle='rgba(4,8,24,.85)';ctx.strokeText(name,512,140,650);
+    ctx.fillStyle='#ffffff';ctx.fillText(name,512,140,650);
+    return spr;
+  }
+
+  // Vị trí các ngôi sao lấp lánh (cố định theo tên)
+  const seed=[...name].reduce((a,c)=>a+c.charCodeAt(0),7);
+  const rnd=i=>{const x=Math.sin(seed*12.9898+i*78.233)*43758.5453;return x-Math.floor(x);};
+  const sparks=[];
+  for(let i=0;i<16;i++){
+    sparks.push({
+      x:512+(i%2?1:-1)*(120+rnd(i)*240),
+      y:28+rnd(i+50)*195,
+      r:7+rnd(i+90)*12,
+      ph:rnd(i+20)*6.28,
+      sp:2.2+rnd(i+30)*3
+    });
+  }
+  const star=(x,y,r,a,col)=>{
+    if(a<=0.02)return;
+    ctx.save();ctx.translate(x,y);ctx.globalAlpha=Math.min(1,a);
+    ctx.fillStyle=col;ctx.shadowColor=col;ctx.shadowBlur=r*1.3;
+    ctx.beginPath();
+    for(let i=0;i<8;i++){
+      const ang=i*Math.PI/4-Math.PI/2;
+      const rad=i%2?r*0.2:r;
+      ctx.lineTo(Math.cos(ang)*rad,Math.sin(ang)*rad);
+    }
+    ctx.closePath();ctx.fill();
+    ctx.fillStyle='#fff';ctx.shadowBlur=0;
+    ctx.beginPath();ctx.arc(0,0,r*0.16,0,6.283);ctx.fill();
+    ctx.restore();
+  };
+
+  const layers=[{n:7,scale:1,off:0},{n:6,scale:0.6,off:0.07}];
+
+  function drawWings(t){
+    for(const side of [-1,1]){
+      ctx.save();ctx.translate(512+side*172,142);ctx.scale(side,1);
+      layers.forEach((layer,li)=>{
+        for(let k=0;k<layer.n;k++){
+          const ang=-1.0+layer.off+k*(1.28/(layer.n-1));
+          const L=(172-k*(80/(layer.n-1)))*layer.scale;
+          const w=16*layer.scale;
+          ctx.save();ctx.rotate(ang);
+          const path=()=>{
+            ctx.beginPath();ctx.moveTo(0,0);
+            ctx.quadraticCurveTo(L*0.5,-w*1.5,L,-w*0.15);
+            ctx.quadraticCurveTo(L*0.55,w*1.1,0,0);
+            ctx.closePath();
+          };
+          const g=ctx.createLinearGradient(0,0,L,0);
+          g.addColorStop(0,th[2]);g.addColorStop(0.5,th[1]);g.addColorStop(1,th[0]);
+          path();ctx.fillStyle=g;ctx.globalAlpha=li?0.95:0.88;
+          ctx.shadowColor=th[1];ctx.shadowBlur=li?6:10;ctx.fill();
+          ctx.shadowBlur=0;ctx.globalAlpha=1;
+          // Vệt sáng quét qua lông vũ
+          const s=((t*0.9+k*0.13+li*0.3+(side>0?0.2:0))%1.8)-0.4;
+          const p=s*L;
+          const hg=ctx.createLinearGradient(p-32,0,p+32,0);
+          hg.addColorStop(0,'rgba(255,255,255,0)');
+          hg.addColorStop(0.5,'rgba(255,255,255,0.9)');
+          hg.addColorStop(1,'rgba(255,255,255,0)');
+          path();ctx.fillStyle=hg;ctx.fill();
+          // Viền + sống lông
+          path();ctx.strokeStyle='rgba(255,255,255,.55)';ctx.lineWidth=1.3;ctx.stroke();
+          ctx.beginPath();ctx.moveTo(L*0.04,0);ctx.lineTo(L*0.93,-w*0.12);
+          ctx.strokeStyle='rgba(255,255,255,.6)';ctx.lineWidth=1.4;ctx.stroke();
+          ctx.restore();
+        }
+      });
       ctx.restore();
-    };
-    drawWing(-1);drawWing(1);
-    ctx.font='700 24px system-ui,sans-serif';ctx.fillStyle=th[1];
+    }
+  }
+
+  function draw(t){
+    ctx.clearRect(0,0,1024,256);
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    drawWings(t);
+    sparks.forEach(s=>{
+      const a=Math.pow(Math.max(0,Math.sin(t*s.sp+s.ph)),3);
+      star(s.x,s.y,s.r*(0.6+0.5*a),a,a>0.6?'#ffffff':th[0]);
+    });
+    ctx.font='700 24px system-ui,sans-serif';ctx.fillStyle=th[0];
     ctx.shadowColor=th[1];ctx.shadowBlur=12;
     ctx.fillText('✦  '+frame.toUpperCase()+'  ✦',512,66);
     ctx.shadowBlur=0;
@@ -831,16 +905,11 @@ function makeLabel(text, frame='none') {
     ctx.lineWidth=7;ctx.strokeStyle='rgba(5,9,25,.9)';ctx.strokeText(name,512,140,390);
     ctx.fillStyle='#ffffff';ctx.shadowColor=th[1];ctx.shadowBlur=13;
     ctx.fillText(name,512,140,390);ctx.shadowBlur=0;
-  }else{
-    // Người chưa được cấp khung chỉ có tên thường, không trang trí.
-    ctx.font='bold 57px system-ui,sans-serif';
-    ctx.lineWidth=7;ctx.strokeStyle='rgba(4,8,24,.85)';ctx.strokeText(name,512,140,650);
-    ctx.fillStyle='#ffffff';ctx.fillText(name,512,140,650);
+    tex.needsUpdate=true;
   }
-  const tex=new THREE.CanvasTexture(cv);tex.minFilter=THREE.LinearFilter;
-  const spr=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false}));
-  spr.scale.set(th?2.55:1.95,th?0.64:0.49,1);
-  spr.position.y=2.02;spr.userData.labelTexture=tex;
+  draw(0);
+  spr.userData.animated=true;
+  spr.userData.draw=draw;
   return spr;
 }
 function updateNameplates(){
@@ -1692,6 +1761,12 @@ function animate() {
   updateEntrance(dt,t);
   updateGuestDj(dt);
   updateMc(dt,t);
+  // Vẽ lại khung tên có cánh (chỉ những tên có khung mới chuyển động)
+  if (t - lastLabelAnim > (isMobile ? 0.12 : 0.07)) {
+    lastLabelAnim = t;
+    dancers.forEach(d => { if (d.label && d.label.userData.animated) d.label.userData.draw(t); });
+    if (mcNameLabel && mcNameLabel.userData.animated) mcNameLabel.userData.draw(t);
+  }
   if(mcPersonName){const mcDancer=dancers.find(d=>d.name.toLowerCase()===mcPersonName.toLowerCase());if(mcDancer)mcDancer.mesh.visible=false;}
   dancers.forEach(d => {
     if(d.entering || (guestDjTravel && guestDjTravel.d===d)) {
