@@ -800,57 +800,63 @@ function charPart(parent, geo, mat, xyz, scale, rot){
   parent.add(m);return m;
 }
 function createChar(colorHex, isDJ = false) {
-  const g=new THREE.Group();
-  const variant=Math.floor(Math.random()*100000);
-  const skin=charMat(CHAR_SKINS[variant%CHAR_SKINS.length]);
-  const hairMat=charMat(CHAR_HAIR[(variant>>2)%CHAR_HAIR.length]);
-  const cloth=charMat(new THREE.Color(colorHex).getHex(),0.76);
-  const pants=charMat(CHAR_PANTS[(variant>>3)%CHAR_PANTS.length]);
-  const shoes=charMat(variant%3===0?0xf0eee9:0x181923,0.64);
-  const eyes=charMat(0x221b1b,0.45);
-  const mouth=charMat(0x814f4b,0.9);
-  const body=new THREE.Group();body.position.y=0.77;g.add(body);
-  // Natural shoulder-to-waist silhouette and layered neckline.
-  charPart(body,CHAR_GEO.taper,cloth,[0,0.02,0],[isDJ?0.27:0.245,0.43,0.145]);
-  charPart(body,CHAR_GEO.sphere,cloth,[0,0.225,0],[0.255,0.115,0.155]);
-  charPart(body,CHAR_GEO.cylinder,skin,[0,0.325,0],[0.065,0.105,0.066]);
-  charPart(body,CHAR_GEO.sphere,charMat(0xe6e2dc),[0,0.29,0.135],[0.105,0.018,0.012]);
-  // Head has human-like proportions, ears, eyes, nose and a restrained smile.
-  const head=new THREE.Group();head.position.set(0,0.54,0);body.add(head);
-  charPart(head,CHAR_GEO.fineSphere,skin,[0,0,0],[0.165,0.214,0.155]);
+  const g = new THREE.Group();
+  const variant = Math.floor(Math.random()*100000);
+  const skin = charMat(CHAR_SKINS[variant%CHAR_SKINS.length]);
+  const hairMat = charMat(CHAR_HAIR[(variant>>2)%CHAR_HAIR.length]);
+  const cloth = charMat(new THREE.Color(colorHex).getHex(),0.78);
+  const pants = charMat(CHAR_PANTS[(variant>>3)%CHAR_PANTS.length]);
+  const shoes = charMat(variant%3===0?0xece9e3:0x191923,0.68);
+  const eyes = charMat(0x241b1b,0.5);
+  const mouth = charMat(0x814f4b,0.9);
+  // One continuous silhouette: hips, torso and shoulders deliberately overlap.
+  // Rounded junctions hide the sharp edges of the primitive geometry.
+  const body = new THREE.Group(); body.position.y=0.77; g.add(body);
+  charPart(body,CHAR_GEO.sphere,pants,[0,-0.325,0],[0.205,0.155,0.127]);
+  charPart(body,CHAR_GEO.taper,cloth,[0,-0.005,0],[isDJ?0.275:0.255,0.44,0.152]);
+  charPart(body,CHAR_GEO.sphere,cloth,[0,0.205,0],[0.278,0.13,0.158]);
+  charPart(body,CHAR_GEO.sphere,cloth,[0,-0.24,0],[0.204,0.115,0.14]);
+  charPart(body,CHAR_GEO.cylinder,skin,[0,0.32,0],[0.064,0.145,0.064]);
+  charPart(body,CHAR_GEO.sphere,charMat(0xe6e2dc),[0,0.285,0.142],[0.105,0.018,0.012]);
+  const head=new THREE.Group();head.position.set(0,0.515,0);body.add(head);
+  charPart(head,CHAR_GEO.fineSphere,skin,[0,0,0],[0.164,0.215,0.155]);
+  // Jaw blends into the neck rather than floating above it.
+  charPart(head,CHAR_GEO.sphere,skin,[0,-0.132,0.025],[0.109,0.095,0.112]);
   for(const side of [-1,1]){
-    charPart(head,CHAR_GEO.sphere,skin,[side*0.166,-0.012,0],[0.029,0.065,0.038]);
+    charPart(head,CHAR_GEO.sphere,skin,[side*0.158,-0.012,0],[0.027,0.057,0.037]);
     charPart(head,CHAR_GEO.sphere,charMat(0xf8f5ef),[side*0.068,0.025,0.145],[0.034,0.025,0.013]);
     charPart(head,CHAR_GEO.sphere,eyes,[side*0.067,0.025,0.157],[0.014,0.018,0.009]);
     charPart(head,CHAR_GEO.sphere,hairMat,[side*0.068,0.071,0.155],[0.045,0.010,0.012]);
   }
   charPart(head,CHAR_GEO.sphere,skin,[0,-0.036,0.160],[0.028,0.044,0.035]);
   charPart(head,CHAR_GEO.sphere,mouth,[0,-0.112,0.148],[0.049,0.009,0.009]);
-  // Hairline and asymmetric strands; no external models or network requests.
   charPart(head,CHAR_GEO.sphere,hairMat,[0,0.157,-0.016],[0.175,0.094,0.164]);
-  charPart(head,CHAR_GEO.sphere,hairMat,[-0.063,0.126,0.098],[0.092,0.046,0.070], [0,0,-0.22]);
+  charPart(head,CHAR_GEO.sphere,hairMat,[-0.063,0.126,0.098],[0.092,0.046,0.070],[0,0,-0.22]);
   if(variant%3===0)charPart(head,CHAR_GEO.sphere,hairMat,[0.09,0.139,0.083],[0.09,0.051,0.076]);
-  // Pivots at actual shoulders: existing animation rotates the full arms.
   function arm(side){
-    const pivot=new THREE.Group();pivot.position.set(side*0.272,0.235,0);body.add(pivot);
-    charPart(pivot,CHAR_GEO.sphere,cloth,[side*0.012,-0.075,0],[0.084,0.135,0.090]);
-    charPart(pivot,CHAR_GEO.taper,cloth,[side*0.025,-0.215,0],[0.068,0.155,0.070]);
-    charPart(pivot,CHAR_GEO.sphere,skin,[side*0.035,-0.360,0.006],[0.055,0.075,0.058]);
+    // Shoulder socket stays under the sleeve even during wide dance rotations.
+    charPart(body,CHAR_GEO.sphere,cloth,[side*0.238,0.185,0],[0.115,0.125,0.118]);
+    const pivot=new THREE.Group();pivot.position.set(side*0.252,0.185,0);body.add(pivot);
+    charPart(pivot,CHAR_GEO.sphere,cloth,[side*0.018,-0.048,0],[0.100,0.145,0.103]);
+    charPart(pivot,CHAR_GEO.sphere,cloth,[side*0.025,-0.178,0],[0.079,0.166,0.083]);
+    charPart(pivot,CHAR_GEO.sphere,skin,[side*0.03,-0.313,0.004],[0.062,0.079,0.063]);
+    charPart(pivot,CHAR_GEO.sphere,skin,[side*0.03,-0.365,0.012],[0.055,0.071,0.056]);
     pivot.rotation.z=side*0.15;return pivot;
   }
   const armL=arm(-1),armR=arm(1);
-  // Leg pivots at hips, slim trousers, distinct shoes.
   function leg(side){
-    const pivot=new THREE.Group();pivot.position.set(side*0.116,0.47,0);g.add(pivot);
-    charPart(pivot,CHAR_GEO.taper,pants,[0,-0.19,0],[0.094,0.25,0.099]);
-    charPart(pivot,CHAR_GEO.sphere,pants,[0,-0.39,0],[0.089,0.09,0.09]);
-    charPart(pivot,CHAR_GEO.taper,pants,[0,-0.45,0],[0.076,0.115,0.079]);
-    charPart(pivot,CHAR_GEO.shoe,shoes,[0,-0.535,0.046],[0.17,0.105,0.275]);
+    const pivot=new THREE.Group();pivot.position.set(side*0.105,0.43,0);g.add(pivot);
+    // The thigh starts inside the pelvis, knee and shin overlap, and shoes
+    // overlap the ankle; there are no visible gaps at normal dance angles.
+    charPart(pivot,CHAR_GEO.sphere,pants,[0,-0.065,0],[0.108,0.175,0.112]);
+    charPart(pivot,CHAR_GEO.sphere,pants,[0,-0.245,0],[0.093,0.188,0.100]);
+    charPart(pivot,CHAR_GEO.sphere,pants,[0,-0.378,0],[0.085,0.11,0.089]);
+    charPart(pivot,CHAR_GEO.sphere,pants,[0,-0.456,0],[0.079,0.126,0.082]);
+    charPart(pivot,CHAR_GEO.sphere,shoes,[0,-0.527,0.055],[0.104,0.075,0.168]);
     return pivot;
   }
   const legL=leg(-1),legR=leg(1);
-  // Small jacket seam detail without per-frame allocations.
-  if(variant%4===0)charPart(body,CHAR_GEO.shoe,charMat(0xd9dce1),[0,0.08,0.149],[0.012,0.26,0.009]);
+  if(variant%4===0)charPart(body,CHAR_GEO.shoe,charMat(0xd9dce1),[0,0.07,0.149],[0.012,0.245,0.009]);
   g.userData={armL,armR,legL,legR,body,head,phase:Math.random()*6};
   return g;
 }
