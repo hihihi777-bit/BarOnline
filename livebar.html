@@ -1695,17 +1695,21 @@ function handleMsg(data) {
   }
 }
 
-// LIVE là host cố định; Admin chủ động kết nối từ mọi thiết bị.
+// Live là host cố định, nhận lại Admin khi mạng bị gián đoạn.
 const LIVE_ROOM_CODE = 'BARLIVE001';
 let liveRetryTimer = null;
+let liveRetryCount = 0;
+let livePeerGeneration = 0;
+let lastAdminPing = 0;
 function startLiveHost() {
+  clearTimeout(liveRetryTimer); liveRetryTimer = null;
   showStageUI();
   if (!started) {
     started = true;
-    // Cho trinh duyet ve giao dien truoc, khong cho PeerJS doi dung canh 3D.
     requestAnimationFrame(() => initScene());
   }
   if (peer && !peer.destroyed) return;
+  const generation = ++livePeerGeneration;
   setConnUI('Đang mở kết nối Admin...', false);
   peer = new Peer('djbar-' + LIVE_ROOM_CODE, {
     debug: 0,
@@ -1714,39 +1718,80 @@ function startLiveHost() {
       { urls: 'stun:global.stun.twilio.com:3478' }
     ] }
   });
-  peer.on('open', () => setConnUI('Sàn sẵn sàng · chờ Admin', false));
-  peer.on('connection', incoming => {
-    if (conn && conn.open) {
-      incoming.on('open', () => incoming.close());
+  const host = peer;
+  function retryHost(delay) {
+    if (generation !== livePeerGeneration) return;
+    if (conn) { try { conn.close(); } catch(e) {} conn = null; }
+    try { host.destroy(); } catch(e) {}
+    if (peer === host) peer = null;
+    clearTimeout(liveRetryTimer);
+    liveRetryTimer = setTimeout(startLiveHost, delay);
+  }
+  host.on('open', () => {
+    if (generation !== livePeerGeneration) return;
+    liveRetryCount = 0;
+    setConnUI('Sàn sẵn sàng · chờ Admin', false);
+  });
+  host.on('connection', incoming => {
+    if (generation !== livePeerGeneration) { incoming.close(); return; }
+    // Không chặn phiên mới vì một kết nối cũ đã chết nhưng chưa phát sự kiện close.
+    if (conn && conn.open && Date.now() - lastAdminPing < 35000) {
+      incoming.on('open', () => { try { incoming.close(); } catch(e) {} });
       return;
     }
+    const previous = conn;
     conn = incoming;
+    const pendingTimeout = setTimeout(() => { if (conn === incoming && !incoming.open) { conn = null; try { incoming.close(); } catch(e) {} } }, 22000);
     incoming.on('open', () => {
+      clearTimeout(pendingTimeout);
+      if (conn !== incoming) { incoming.close(); return; }
+      if (previous && previous !== incoming) try { previous.close(); } catch(e) {}
+      lastAdminPing = Date.now();
       setConnUI('Đã kết nối Admin', true);
       try { incoming.send({ type: 'hello' }); } catch(e) {}
     });
-    incoming.on('data', handleMsg);
+    incoming.on('data', data => {
+      if (conn !== incoming) return;
+      lastAdminPing = Date.now();
+      if (data && data.type === 'ping') {
+        try { incoming.send({type:'pong'}); } catch(e) {}
+        return;
+      }
+      handleMsg(data);
+    });
     incoming.on('close', () => {
-      if (conn === incoming) conn = null;
+      clearTimeout(pendingTimeout);
+      if (conn !== incoming) return;
+      conn = null;
       setConnUI('Admin đã ngắt · chờ kết nối lại', false);
     });
-    incoming.on('error', () => setConnUI('Lỗi kết nối Admin', false));
+    incoming.on('error', () => {
+      clearTimeout(pendingTimeout);
+      if (conn !== incoming) return;
+      conn = null;
+      setConnUI('Lỗi kết nối Admin · chờ kết nối lại', false);
+    });
   });
-  peer.on('disconnected', () => {
-    setConnUI('Mất kết nối máy chủ · đang thử lại', false);
-    try { peer.reconnect(); } catch(e) {}
+  host.on('disconnected', () => {
+    if (generation !== livePeerGeneration) return;
+    setConnUI('Mất máy chủ tín hiệu · đang thử lại', false);
+    try { host.reconnect(); } catch(e) {}
+    clearTimeout(liveRetryTimer);
+    liveRetryTimer = setTimeout(() => {
+      if (generation === livePeerGeneration && !host.open) retryHost(1000);
+    }, 12000);
   });
-  peer.on('error', err => {
+  host.on('error', err => {
+    if (generation !== livePeerGeneration) return;
     console.warn('Live PeerJS:', err);
     if (err.type === 'unavailable-id') {
-      setConnUI('Mã Live đang được sử dụng ở thiết bị khác', false);
+      setConnUI('Mã Live đang mở ở thiết bị/tab khác · hãy đóng Live cũ', false);
+      // Tránh chiếm ID và lặp kết nối liên tục khi có tab khác.
+      retryHost(15000);
     } else {
-      setConnUI('Lỗi mạng · đang thử kết nối lại', false);
+      setConnUI('Lỗi mạng · đang khôi phục Live', false);
+      retryHost(Math.min(20000, 2500 * Math.pow(1.6, Math.min(liveRetryCount++, 5))));
     }
-    if (peer) { try { peer.destroy(); } catch(e) {} }
-    peer = null;
-    clearTimeout(liveRetryTimer);
-    liveRetryTimer = setTimeout(startLiveHost, 2000);
   });
 }
 startLiveHost();
