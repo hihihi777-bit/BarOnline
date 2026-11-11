@@ -201,10 +201,15 @@ document.getElementById('btn-logout').onclick = () => {
   location.href = 'index.html';
 };
 
-// Admin là client; Live giữ Peer ID cố định.
+// Admin kết nối đến một Live cố định. Chống kết nối chồng và tự phục hồi.
 const DEFAULT_LIVE_CODE = 'BARLIVE001';
 let reconnectTimer = null;
 let connecting = false;
+let connectAttempt = 0;
+let pendingConnection = null;
+let peerRestartTimer = null;
+let retryCount = 0;
+let lastPong = 0;
 function getState() {
   return { type: 'state', names: [...names], song, djLabel, ttsKey, musicUrl, musicRevision, guestDjName, specialDanceStyle, mcEnabled, mcPersonName, nameFrames: {...nameFrames} };
 }
@@ -218,45 +223,84 @@ function broadcast(msg) {
   document.getElementById('viewer-count').textContent = connections.length ? ' · 1 Live đang điều khiển' : '';
 }
 function pushState() { broadcast(getState()); }
+function scheduleReconnect() {
+  if (reconnectTimer || connections.some(c => c.open)) return;
+  const delay = Math.min(15000, 1800 * Math.pow(1.5, Math.min(retryCount++, 5)));
+  reconnectTimer = setTimeout(() => { reconnectTimer = null; connectLive(); }, delay);
+}
 function connectLive() {
-  clearTimeout(reconnectTimer);
-  if (!peer || peer.destroyed || !peer.open) return;
+  clearTimeout(reconnectTimer); reconnectTimer = null;
   if (connections.some(c => c.open) || connecting) return;
+  if (!peer || peer.destroyed || !peer.open) {
+    setStatus('Đang kết nối máy chủ tín hiệu...', false);
+    return;
+  }
   const code = document.getElementById('room-input').value.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
   if (!code) { setStatus('Nhập mã Live trước', false); return; }
   roomCode = code;
   try { localStorage.setItem('djbar_live_code', code); } catch(e) {}
   connecting = true;
-  setStatus('Đang tìm màn hình Live...', false);
-  const c = peer.connect('djbar-' + code, { reliable: true });
+  const attempt = ++connectAttempt;
+  setStatus('Đang kết nối màn hình Live...', false);
+  let c;
+  try { c = peer.connect('djbar-' + code, { reliable: true, serialization: 'json' }); }
+  catch(e) { connecting = false; setStatus('Chưa kết nối được · sẽ thử lại', false); scheduleReconnect(); return; }
+  pendingConnection = c;
   let completed = false;
+  // ICE/WebRTC trên mạng di động có thể mất hơn 6 giây.
   const timeout = setTimeout(() => {
-    if (!completed) { connecting = false; try { c.close(); } catch(e) {} setStatus('Không tìm thấy Live · đang thử lại...', false); scheduleReconnect(); }
-  }, 6000);
+    if (completed || attempt !== connectAttempt) return;
+    connecting = false; pendingConnection = null;
+    try { c.close(); } catch(e) {}
+    setStatus('Live chưa phản hồi · tự thử lại...', false);
+    scheduleReconnect();
+  }, 18000);
   c.on('open', () => {
-    completed = true; clearTimeout(timeout); connecting = false;
+    if (attempt !== connectAttempt || completed) { try { c.close(); } catch(e) {} return; }
+    completed = true; clearTimeout(timeout); connecting = false; pendingConnection = null;
     connections.forEach(old => { if (old !== c) try { old.close(); } catch(e) {} });
-    connections = [c];
+    connections = [c]; retryCount = 0; lastPong = Date.now();
     setStatus('Đã kết nối Live', true);
-    c.send(getState());
+    try { c.send(getState()); } catch(e) {}
     document.getElementById('viewer-count').textContent = ' · 1 Live đang điều khiển';
   });
-  c.on('data', data => { if (data && data.type === 'hello' && c.open) c.send(getState()); });
-  c.on('close', () => {
-    clearTimeout(timeout); connecting = false;
+  c.on('data', data => {
+    if (data && data.type === 'pong') { lastPong = Date.now(); return; }
+    if (data && data.type === 'hello' && c.open) { lastPong = Date.now(); c.send(getState()); }
+  });
+  function lost() {
+    clearTimeout(timeout);
+    if (attempt !== connectAttempt) return;
+    connecting = false;
+    if (pendingConnection === c) pendingConnection = null;
     connections = connections.filter(x => x !== c);
-    if (!connections.length) { setStatus('Mất kết nối Live · đang thử lại...', false); document.getElementById('viewer-count').textContent=''; scheduleReconnect(); }
-  });
-  c.on('error', () => {
-    clearTimeout(timeout); connecting = false;
-    setStatus('Lỗi kết nối Live · đang thử lại...', false); scheduleReconnect();
-  });
+    if (!connections.length) {
+      setStatus('Mất kết nối Live · đang khôi phục...', false);
+      document.getElementById('viewer-count').textContent = '';
+      scheduleReconnect();
+    }
+  }
+  c.on('close', lost);
+  c.on('error', lost);
 }
-function scheduleReconnect() {
-  clearTimeout(reconnectTimer);
-  reconnectTimer = setTimeout(connectLive, 1200);
-}
+// Ping giúp phát hiện kết nối đã chết nhưng trình duyệt chưa báo close.
+setInterval(() => {
+  const c = connections.find(x => x.open);
+  if (!c) return;
+  if (Date.now() - lastPong > 35000) {
+    setStatus('Live không phản hồi · đang khôi phục...', false);
+    connectAttempt++;
+    connections = [];
+    try { c.close(); } catch(e) {}
+    connecting = false;
+    scheduleReconnect();
+    return;
+  }
+  try { c.send({type:'ping'}); } catch(e) {}
+}, 10000);
 function initAdminPeer() {
+  clearTimeout(peerRestartTimer);
+  connectAttempt++; connecting = false; pendingConnection = null;
   if (peer) try { peer.destroy(); } catch(e) {}
   peer = new Peer({
     debug: 0,
@@ -265,16 +309,35 @@ function initAdminPeer() {
       { urls: 'stun:global.stun.twilio.com:3478' }
     ] }
   });
-  peer.on('open', () => { setStatus('Sẵn sàng kết nối Live', false); connectLive(); });
+  const currentPeer = peer;
+  peer.on('open', () => { if (peer !== currentPeer) return; setStatus('Sẵn sàng kết nối Live', false); retryCount = 0; connectLive(); });
   peer.on('disconnected', () => {
-    setStatus('Mất kết nối máy chủ · đang thử lại...', false);
-    try { peer.reconnect(); } catch(e) {}
+    if (peer !== currentPeer) return;
+    setStatus('Mất máy chủ tín hiệu · đang khôi phục...', false);
+    try { currentPeer.reconnect(); } catch(e) {}
+    clearTimeout(peerRestartTimer);
+    peerRestartTimer = setTimeout(() => { if (peer === currentPeer && !currentPeer.open) initAdminPeer(); }, 12000);
   });
-  peer.on('error', err => { console.warn('Admin PeerJS:',err); setStatus('Lỗi mạng: ' + (err.type||'không xác định'), false); scheduleReconnect(); });
+  peer.on('error', err => {
+    if (peer !== currentPeer) return;
+    console.warn('Admin PeerJS:', err);
+    if (err.type === 'peer-unavailable') { connecting = false; scheduleReconnect(); return; }
+    setStatus('Lỗi tín hiệu: ' + (err.type || 'mạng'), false);
+    if (!currentPeer.open || currentPeer.destroyed) {
+      clearTimeout(peerRestartTimer);
+      peerRestartTimer = setTimeout(() => { if (peer === currentPeer) initAdminPeer(); }, 5000);
+    } else { connecting = false; scheduleReconnect(); }
+  });
 }
 document.getElementById('btn-connect-room').onclick = () => {
+  connectAttempt++; connecting = false; retryCount = 0;
+  clearTimeout(reconnectTimer); reconnectTimer = null;
+  if (pendingConnection) try { pendingConnection.close(); } catch(e) {}
+  pendingConnection = null;
   connections.forEach(c => { try { c.close(); } catch(e) {} });
-  connections=[]; connecting=false; connectLive();
+  connections = [];
+  document.getElementById('viewer-count').textContent = '';
+  connectLive();
 };
 
 // Song
