@@ -195,16 +195,16 @@ let connections = []; // stage viewers
 (function () {
   try {
     const s = JSON.parse(sessionStorage.getItem('djbar_admin') || 'null');
-    if (!s || !s.user) { location.href = 'dj-bar-login.html'; return; }
+    if (!s || !s.user) { location.href = 'index.html'; return; }
     document.getElementById('admin-name').textContent = s.user;
   } catch {
-    location.href = 'dj-bar-login.html';
+    location.href = 'index.html';
   }
 })();
 
 document.getElementById('btn-logout').onclick = () => {
   sessionStorage.removeItem('djbar_admin');
-  location.href = 'dj-bar-login.html';
+  location.href = 'index.html';
 };
 
 // Admin kết nối đến một Live cố định. Chống kết nối chồng và tự phục hồi.
