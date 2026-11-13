@@ -63,11 +63,11 @@ input:focus{border-color:#b14dff}
 <div class="card">
   <h2>Kết nối một màn hình Live</h2>
   <div class="row">
-    <input id="room-input" value="BARLIVE001" maxlength="32" placeholder="Mã Live cố định" autocomplete="off"/>
+    <input id="room-input" value="BARLIVE7F42C9" maxlength="32" placeholder="Mã Live cố định" autocomplete="off"/>
     <button class="btn btn-room" id="btn-connect-room">Kết nối Live</button>
   </div>
   <p class="status"><span class="status-dot" id="conn-dot"></span><span id="conn-status">Đang khởi tạo...</span><span class="viewers" id="viewer-count"></span></p>
-  <p class="hint">Mở livebar.html trên thiết bị phát Live trước, sau đó bấm Kết nối Live tại đây. Chỉ điều khiển một Live tại một thời điểm, không cần chung Wi-Fi. Mã mặc định: BARLIVE001.</p>
+  <p class="hint">Mở livebar.html trên thiết bị phát Live trước, sau đó bấm Kết nối Live tại đây. Chỉ điều khiển một Live tại một thời điểm, không cần chung Wi-Fi. Mã mặc định: BARLIVE7F42C9.</p>
 </div>
 
 <div class="card">
@@ -202,7 +202,7 @@ document.getElementById('btn-logout').onclick = () => {
 };
 
 // Admin kết nối đến một Live cố định. Chống kết nối chồng và tự phục hồi.
-const DEFAULT_LIVE_CODE = 'BARLIVE001';
+const DEFAULT_LIVE_CODE = 'BARLIVE7F42C9';
 let reconnectTimer = null;
 let connecting = false;
 let connectAttempt = 0;
