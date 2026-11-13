@@ -68,7 +68,7 @@ input:focus{border-color:#b14dff}
     <button class="btn btn-stop" id="btn-copy-room">Sao chép mã</button>
   </div>
   <p class="status"><span class="status-dot" id="conn-dot"></span><span id="conn-status">Đang kết nối máy chủ...</span>
-    <span class="viewers" id="viewer-count"></span> <span class="viewers" id="audio-count"></span>
+    <span class="viewers" id="viewer-count"></span>
   </p>
   <p class="hint">Mở trang Sân khấu trên điện thoại → nhập mã phòng này. Không cần cùng Wi‑Fi hay cùng máy.</p>
 </div>
@@ -99,7 +99,7 @@ input:focus{border-color:#b14dff}
     <button class="btn btn-stop" id="btn-stop">Dừng</button>
   </div>
   <p class="status" id="music-status">Chưa phát nhạc — player hiện bên dưới khi phát</p>
-  <p class="hint">Nhạc được gửi sang các sân khấu đang kết nối. Trên điện thoại, bấm Bật nhạc nếu trình duyệt chặn tự phát. SoundCloud: nếu trình duyệt chặn tự phát, bấm ▶ trong khung SoundCloud. Link riêng tư hoặc bị hạn chế nhúng có thể không phát được.</p>
+  <p class="hint">Nhạc được gửi sang các sân khấu đang kết nối. Trên điện thoại, bấm Bật nhạc nếu trình duyệt chặn tự phát. YouTube/SoundCloud có thể cần bấm ▶ trong khung phát.</p>
   <div id="music-player-box">
     <iframe id="music-frame" allow="autoplay; encrypted-media; clipboard-write; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
     <audio id="music-audio" controls loop></audio>
@@ -127,21 +127,10 @@ input:focus{border-color:#b14dff}
   <div class="row" style="margin-top:12px">
     <input id="guest-dj-name" list="guest-dj-options" placeholder="Tên người đang ở dưới sàn..."/>
     <datalist id="guest-dj-options"></datalist>
-    <select id="special-dance-style" style="flex:1;min-width:140px;padding:11px;border-radius:10px;background:#171a2b;color:#fff;border:1px solid #535875"><option value="shuffle">⚡ Shuffle</option><option value="robot">🤖 Robot</option><option value="disco">🪩 Disco</option><option value="hiphop">🔥 Hip-hop</option></select>
-    <button class="btn btn-add" id="btn-dance-dj">✨ Đổi điệu nhảy</button>
+    <button class="btn btn-add" id="btn-dance-dj">🎧 Lên nhảy cùng DJ</button>
     <button class="btn btn-stop" id="btn-dance-return">Xuống sàn</button>
   </div>
-  <div class="row" style="margin-top:12px;align-items:center">
-    <button class="btn btn-add" id="btn-mc-toggle">🎤 Tắt MC tự động</button>
-    <span class="hint">MC chỉ hiện bong bóng chat 5 câu, không đọc thành tiếng; mặc định là MC.</span>
-  </div>
-  <div class="row" style="margin-top:12px;align-items:center">
-    <input id="mc-person-name" list="guest-dj-options" placeholder="Chọn người làm MC (đã ở trong sàn)..."/>
-    <button class="btn btn-add" id="btn-mc-assign">🎤 Cho làm MC</button>
-    <button class="btn btn-stop" id="btn-mc-default">MC mặc định</button>
-  </div>
-  <p class="hint" id="mc-person-status">MC mặc định đang đứng trên bục.</p>
-  <p class="hint" id="guest-dj-status">Chọn người và điệu nhảy để lên bục biểu diễn solo.</p>
+  <p class="hint" id="guest-dj-status">Chọn một người đã có trên sàn để mời lên bục DJ.</p>
   <div class="row" style="margin-top:12px">
     <input id="frame-name" list="guest-dj-options" placeholder="Tên người muốn gắn khung..."/>
     <select id="frame-style" style="flex:1;min-width:160px;padding:11px;border-radius:10px;background:#171a2b;color:white;border:1px solid #535875">
@@ -174,9 +163,6 @@ let ttsKey = '';
 try { ttsKey = localStorage.getItem('djbar_tts_key') || ''; } catch (e) {}
 let names = [];
 let guestDjName = '';
-let mcEnabled = true;
-let mcPersonName = '';
-let specialDanceStyle = 'shuffle';
 let nameFrames = {};
 try { nameFrames=JSON.parse(localStorage.getItem('djbar_name_frames')||'{}')||{}; } catch(e) {}
 let song = 'Funk Pulse';
@@ -211,16 +197,16 @@ function genCode() {
 }
 
 function getState() {
-  return { type: 'state', names: [...names], song, djLabel, ttsKey, musicUrl, musicRevision, guestDjName, specialDanceStyle, mcEnabled, mcPersonName, nameFrames: {...nameFrames} };
+  return { type: 'state', names: [...names], song, djLabel, ttsKey, musicUrl, musicRevision, guestDjName, nameFrames: {...nameFrames} };
 }
 
 function broadcast(msg) {
   connections = connections.filter(c => c.open);
   connections.forEach(c => {
-    try { if (c.open) c.send(msg); } catch (e) {}
+    try { c.send(msg); } catch (e) {}
   });
-  document.getElementById('viewer-count').textContent = connections.filter(c=>c.metadata?.role!=='audio').length ? ' · Live đã kết nối' : '';
-  document.getElementById('audio-count').textContent = connections.some(c=>c.metadata?.role==='audio') ? ' · Chrome âm thanh đã kết nối' : '';
+  document.getElementById('viewer-count').textContent =
+    connections.length ? ` · ${connections.length} sân khấu đang xem` : '';
 }
 
 function pushState() {
@@ -259,13 +245,12 @@ function startHost(code) {
       connections.push(conn);
       conn.send(getState());
       setStatus('Đã kết nối sân khấu', true);
-      document.getElementById('viewer-count').textContent = connections.some(c=>c.metadata?.role!=='audio') ? ' · Live đã kết nối' : '';
-      document.getElementById('audio-count').textContent = connections.some(c=>c.metadata?.role==='audio') ? ' · Chrome âm thanh đã kết nối' : '';
+      document.getElementById('viewer-count').textContent = ` · ${connections.length} sân khấu đang xem`;
     });
     conn.on('close', () => {
       connections = connections.filter(c => c !== conn);
-      document.getElementById('viewer-count').textContent = connections.some(c=>c.metadata?.role!=='audio') ? ' · Live đã kết nối' : '';
-      document.getElementById('audio-count').textContent = connections.some(c=>c.metadata?.role==='audio') ? ' · Chrome âm thanh đã kết nối' : '';
+      document.getElementById('viewer-count').textContent =
+        connections.length ? ` · ${connections.length} sân khấu đang xem` : '';
     });
     conn.on('data', data => {
       if (data && data.type === 'hello') conn.send(getState());
@@ -275,7 +260,8 @@ function startHost(code) {
   peer.on('error', err => {
     console.warn(err);
     if (String(err).includes('taken') || (err.type === 'unavailable-id')) {
-      setStatus('Mã BARLIVE001 đang được sử dụng. Hãy đóng tab Admin cũ rồi tải lại.', false);
+      // mã trùng → tạo mã khác
+      startHost(genCode());
       return;
     }
     setStatus('Lỗi kết nối: ' + (err.type || err.message || err), false);
@@ -287,7 +273,7 @@ function startHost(code) {
   });
 }
 
-document.getElementById('btn-new-room').onclick = () => startHost('BARLIVE001');
+document.getElementById('btn-new-room').onclick = () => startHost(genCode());
 document.getElementById('btn-copy-room').onclick = () => {
   navigator.clipboard.writeText(roomCode).then(() => {
     document.getElementById('conn-status').textContent = 'Đã sao chép mã phòng!';
@@ -456,56 +442,29 @@ function addName() {
   renderList();
   broadcast({ type: 'add', name });
   pushState();
-  if (!connections.some(c=>c.open && c.metadata?.role==='audio')) adminSpeak(name);
+  adminSpeak(name);
 }
 function inviteGuestDj(){
   const value=document.getElementById('guest-dj-name').value.trim();
   const found=names.find(n=>n.toLocaleLowerCase('vi')===value.toLocaleLowerCase('vi'));
   const status=document.getElementById('guest-dj-status');
   if(!found){status.textContent='Tên này chưa có trên sàn. Hãy thêm người trước.';return;}
-  if(mcPersonName.toLocaleLowerCase('vi')===found.toLocaleLowerCase('vi'))resetMcPerson();
   guestDjName=found;
-  specialDanceStyle=document.getElementById('special-dance-style').value;
-  status.textContent=found+' đang lên bục biểu diễn điệu '+specialDanceStyle+'!';
-  broadcast({type:'guest-dj',name:found,style:specialDanceStyle});pushState();
+  status.textContent=found+' đang đi lên sân khấu nhảy cùng DJ!';
+  broadcast({type:'guest-dj',name:found});pushState();
 }
 function returnGuestDj(){
   guestDjName='';
   document.getElementById('guest-dj-status').textContent='Đã mời khách xuống lại sàn.';
-  broadcast({type:'guest-dj',name:'',style:specialDanceStyle});pushState();
+  broadcast({type:'guest-dj',name:''});pushState();
 }
 document.getElementById('btn-dance-dj').onclick=inviteGuestDj;
 document.getElementById('btn-dance-return').onclick=returnGuestDj;
-function assignMcPerson(){
-  const input=document.getElementById('mc-person-name');
-  const value=input.value.trim();
-  const found=names.find(n=>n.toLocaleLowerCase('vi')===value.toLocaleLowerCase('vi'));
-  const status=document.getElementById('mc-person-status');
-  if(!found){status.textContent='Người này chưa có trong sàn. Hãy thêm người trước.';return;}
-  if(guestDjName.toLocaleLowerCase('vi')===found.toLocaleLowerCase('vi')){
-    status.textContent='Người này đang đổi điệu nhảy. Hãy cho xuống sàn trước.';return;
-  }
-  mcPersonName=found;
-  status.textContent=found+' đang làm MC (chỉ hiện chữ, không phát tiếng).';
-  broadcast({type:'mc-person',name:found});pushState();
-}
-function resetMcPerson(){
-  mcPersonName='';
-  document.getElementById('mc-person-name').value='';
-  document.getElementById('mc-person-status').textContent='MC mặc định đang đứng trên bục.';
-  broadcast({type:'mc-person',name:''});pushState();
-}
-document.getElementById('btn-mc-assign').onclick=assignMcPerson;
-document.getElementById('btn-mc-default').onclick=resetMcPerson;
-document.getElementById('mc-person-name').addEventListener('keydown',e=>{if(e.key==='Enter')assignMcPerson();});
-document.getElementById('btn-mc-toggle').onclick=()=>{mcEnabled=!mcEnabled;document.getElementById('btn-mc-toggle').textContent=mcEnabled?'🎤 Tắt MC tự động':'🎤 Bật MC tự động';broadcast({type:'mc-toggle',enabled:mcEnabled});pushState();};
-document.getElementById('special-dance-style').onchange=()=>{specialDanceStyle=document.getElementById('special-dance-style').value;if(guestDjName){broadcast({type:'guest-dj',name:guestDjName,style:specialDanceStyle});pushState();}};
 document.getElementById('guest-dj-name').addEventListener('keydown',e=>{if(e.key==='Enter')inviteGuestDj();});
 function removeName(name) {
   names = names.filter(n => n.toLowerCase() !== name.toLowerCase());
   delete nameFrames[name.toLowerCase()];
   if(guestDjName.toLowerCase()===name.toLowerCase())returnGuestDj();
-  if(mcPersonName.toLowerCase()===name.toLowerCase())resetMcPerson();
   renderList();
   broadcast({ type: 'remove', name });
   pushState();
@@ -516,7 +475,6 @@ function clearAll() {
   nameFrames={};
   try{localStorage.removeItem('djbar_name_frames');}catch(e){}
   returnGuestDj();
-  resetMcPerson();
   renderList();
   broadcast({ type: 'clear' });
   pushState();
@@ -537,50 +495,14 @@ function parseUrl(url) {
       embed: 'https://www.youtube.com/embed/' + id + '?autoplay=1&enablejsapi=1&loop=1&playlist=' + id + '&playsinline=1&rel=0&modestbranding=1'
     };
   }
-  if (/^https?:\/\/(?:[a-z0-9-]+\.)?soundcloud\.com\//i.test(url)) {
+  if (url.includes('soundcloud.com')) {
     return {
       type: 'sc',
-      embed: 'https://w.soundcloud.com/player/?url=' + encodeURIComponent(url) + '&auto_play=false&hide_related=true&show_comments=false&visual=false&show_teaser=false'
+      embed: 'https://w.soundcloud.com/player/?url=' + encodeURIComponent(url) + '&auto_play=true&hide_related=true&show_comments=false&visual=false&show_teaser=false'
     };
   }
   if (url.match(/\.(mp3|ogg|wav|m4a)(\?|$)/i)) return { type: 'audio', src: url };
   return { type: 'iframe', embed: url };
-}
-
-let adminScWidget = null;
-let adminScRequest = 0;
-let adminScApiPromise = null;
-function loadAdminScApi() {
-  if (window.SC && window.SC.Widget) return Promise.resolve(true);
-  if (adminScApiPromise) return adminScApiPromise;
-  adminScApiPromise = new Promise(resolve => {
-    const script = document.createElement('script');
-    script.src = 'https://w.soundcloud.com/player/api.js';
-    script.onload = () => resolve(!!(window.SC && window.SC.Widget));
-    script.onerror = () => resolve(false);
-    document.head.appendChild(script);
-  });
-  return adminScApiPromise;
-}
-async function setupAdminSc(frame, request) {
-  if (!await loadAdminScApi() || request !== adminScRequest) {
-    if (request === adminScRequest) document.getElementById('music-status').textContent = 'SoundCloud: hãy bấm ▶ trong khung nhạc.';
-    return;
-  }
-  const widget = window.SC.Widget(frame);
-  adminScWidget = widget;
-  widget.bind(window.SC.Widget.Events.READY, () => {
-    if (request !== adminScRequest) return;
-    document.getElementById('music-status').textContent = 'SoundCloud đã tải — bấm ▶ trong khung để nghe nếu chưa tự phát.';
-    // Lệnh này có thể bị trình duyệt chặn: người dùng vẫn có thể bấm trong iframe.
-    try { widget.play(); } catch (e) {}
-  });
-  widget.bind(window.SC.Widget.Events.PLAY, () => {
-    if (request === adminScRequest) document.getElementById('music-status').textContent = 'SoundCloud đang phát ♪';
-  });
-  widget.bind(window.SC.Widget.Events.ERROR, () => {
-    if (request === adminScRequest) document.getElementById('music-status').textContent = 'SoundCloud không tải được bài này. Kiểm tra link công khai và quyền nhúng.';
-  });
 }
 
 function playMusic() {
@@ -595,7 +517,6 @@ function playMusic() {
     return;
   }
 
-  adminScRequest++; adminScWidget = null;
   musicUrl = url;
   musicRevision++;
   broadcast({ type: 'music', url: musicUrl, revision: musicRevision });
@@ -625,13 +546,11 @@ function playMusic() {
   frame.style.display = 'block';
   // YouTube / SoundCloud: hiện player để trình duyệt cho phép tiếng
   frame.src = p.embed;
-  if (p.type === 'sc') setupAdminSc(frame, adminScRequest);
   const label = p.type === 'yt' ? 'YouTube' : p.type === 'sc' ? 'SoundCloud' : 'Nhạc';
   document.getElementById('music-status').textContent = 'Đang phát: ' + label + ' (bật tiếng trên player nếu bị tắt)';
 }
 
 function stopMusic() {
-  adminScRequest++; adminScWidget = null;
   musicUrl = '';
   musicRevision++;
   broadcast({ type: 'music-stop', revision: musicRevision });
@@ -656,7 +575,7 @@ updateLedPreview();
 renderList();
 let last = '';
 try { last = localStorage.getItem('djbar_last_room') || ''; } catch (e) {}
-startHost('BARLIVE001');
+startHost(last && last.length === 6 ? last : genCode());
 if (window.speechSynthesis) {
   window.speechSynthesis.getVoices();
   window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
