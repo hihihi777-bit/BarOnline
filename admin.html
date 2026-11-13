@@ -68,7 +68,6 @@ input:focus{border-color:#b14dff}
   </div>
   <p class="status"><span class="status-dot" id="conn-dot"></span><span id="conn-status">Đang khởi tạo...</span><span class="viewers" id="viewer-count"></span></p>
   <p class="hint">Mở livebar.html trên thiết bị phát Live trước, sau đó bấm Kết nối Live tại đây. Chỉ điều khiển một Live tại một thời điểm, không cần chung Wi-Fi. Mã mặc định: BARLIVE001.</p>
-<p class="status" id="audio-peer-status">Chrome Audio: chưa kết nối (mở audio.html)</p>
 </div>
 
 <div class="card">
@@ -219,7 +218,6 @@ function setStatus(message, on) {
   document.getElementById('conn-dot').className = 'status-dot' + (on ? ' on' : '');
 }
 function broadcast(msg) {
-  if (audioConnection && audioConnection.open) { try { audioConnection.send(msg); } catch(e) {} }
   connections = connections.filter(c => c.open);
   connections.forEach(c => { try { c.send(msg); } catch(e) {} });
   document.getElementById('viewer-count').textContent = connections.length ? ' · 1 Live đang điều khiển' : '';
@@ -342,30 +340,6 @@ document.getElementById('btn-connect-room').onclick = () => {
   connectLive();
 };
 
-// Bộ phát âm thanh riêng: KHÔNG thay đổi kết nối Live hiện có.
-let audioConnection = null, audioConnecting = false, audioRetryTimer = null;
-function audioStatus(t) { const e=document.getElementById('audio-peer-status'); if(e)e.textContent=t; }
-function connectAudioOutput() {
-  if (audioConnection && audioConnection.open || audioConnecting || !peer || !peer.open) return;
-  const code=(document.getElementById('room-input').value||'BARLIVE001').trim().toUpperCase();
-  audioConnecting=true;
-  let c;
-  try { c=peer.connect('djbar-audio-'+code,{reliable:true,serialization:'json'}); }
-  catch(e){audioConnecting=false;return;}
-  let done=false;
-  const timer=setTimeout(()=>{if(!done){done=true;audioConnecting=false;try{c.close()}catch(e){}}},12000);
-  c.on('open',()=>{
-    if(done)return;
-    done=true;clearTimeout(timer);audioConnecting=false;
-    if(audioConnection && audioConnection!==c)try{audioConnection.close()}catch(e){}
-    audioConnection=c;audioStatus('Chrome Audio: đã kết nối');
-    try{c.send(getState())}catch(e){}
-  });
-  c.on('data',d=>{if(d&&d.type==='audio-status')audioStatus('Chrome Audio: '+String(d.message||''));});
-  const lost=()=>{clearTimeout(timer);audioConnecting=false;if(audioConnection===c){audioConnection=null;audioStatus('Chrome Audio: chưa kết nối');}};
-  c.on('close',lost);c.on('error',lost);
-}
-setInterval(connectAudioOutput,3500);
 // Song
 function updateLedPreview() {
   const t = '♪ ' + (song || 'FUNK PULSE').toUpperCase() + '  ·  ';
@@ -476,7 +450,6 @@ function adminDuck(d) {
 }
 let adminTtsChain = Promise.resolve();
 function adminSpeak(name) {
-  if (audioConnection && audioConnection.open) return; // Chrome Audio đảm nhiệm đọc tên
   const n = cleanForSpeech(name);
   if (!n) return;
   const text = n + ' đã vào sàn nhảy';
