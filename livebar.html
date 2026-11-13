@@ -1055,6 +1055,7 @@ function speakableName(name) {
 }
 
 function playChime() {
+  if (DJBAR_VISUAL_ONLY) return;
   try {
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return;
@@ -1196,7 +1197,9 @@ function speakWithSynth(text) {
 
 // ---------- Hàng đợi đọc: lần lượt từng câu, không đọc đè ----------
 let vnChain = Promise.resolve();
+const DJBAR_VISUAL_ONLY = new URLSearchParams(location.search).get('audio') === 'off';
 function speakVietnamese(text) {
+  if (DJBAR_VISUAL_ONLY) return Promise.resolve(false);
   const say = String(text || '').normalize('NFC').trim();
   if (!say) return Promise.resolve(false);
   const p = vnChain.then(async () => {
@@ -1499,6 +1502,7 @@ function stopStageMusic() {
   document.getElementById('btn-music').textContent='Bật nhạc ▶';
 }
 function setStageMusic(url, revision) {
+  if (DJBAR_VISUAL_ONLY) return;
   if (revision !== undefined && revision < currentMusicRevision) return;
   if (revision !== undefined) currentMusicRevision = revision;
   if (url === currentMusicUrl) return;
