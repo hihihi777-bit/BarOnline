@@ -97,6 +97,11 @@ input:focus{border-color:#b14dff}
   </div>
   <p class="status" id="music-status">Chưa phát nhạc — player hiện bên dưới khi phát</p>
   <p class="hint">Nhạc được gửi sang các sân khấu đang kết nối. Trên điện thoại, bấm Bật nhạc nếu trình duyệt chặn tự phát. SoundCloud: nếu trình duyệt chặn tự phát, bấm ▶ trong khung SoundCloud. Link riêng tư hoặc bị hạn chế nhúng có thể không phát được.</p>
+  <label style="display:block;margin:12px 0;padding:10px;background:#142332;border-radius:8px">
+    <input id="external-audio-mode" type="checkbox" checked style="width:auto;margin-right:8px">
+    Dùng audio.html để phát tiếng (không phát trùng tại Admin)
+  </label>
+  <p class="status">Mở <a href="audio.html" target="_blank" rel="noopener" style="color:#80dfff">Audio Player ↗</a> trên Chrome cùng máy và cùng tên miền.</p>
   <div id="music-player-box">
     <iframe id="music-frame" allow="autoplay; encrypted-media; clipboard-write; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
     <audio id="music-audio" controls loop></audio>
@@ -184,6 +189,20 @@ let musicRevision = 0;
 let roomCode = '';
 let peer = null;
 let connections = []; // stage viewers
+// Audio Player chạy trong Chrome cùng origin; không cần PeerJS thứ hai.
+const audioBus = ('BroadcastChannel' in window) ? new BroadcastChannel('djbar-audio-v1') : null;
+let audioPlayerReady = false;
+function sendAudio(message) {
+  if (audioBus) audioBus.postMessage(message);
+  if (!audioBus) try { localStorage.setItem('djbar_audio_event', JSON.stringify({...message, _id: Date.now() + '-' + Math.random()})); } catch(e) {}
+}
+if (audioBus) audioBus.onmessage = ({data}) => {
+  if (data?.type === 'audio-ready') {
+    audioPlayerReady = true;
+    sendAudio({type:'state', musicUrl, musicRevision, ttsKey});
+  }
+};
+
 
 // Auth check
 (function () {
@@ -218,6 +237,7 @@ function setStatus(message, on) {
   document.getElementById('conn-dot').className = 'status-dot' + (on ? ' on' : '');
 }
 function broadcast(msg) {
+  sendAudio(msg);
   connections = connections.filter(c => c.open);
   connections.forEach(c => { try { c.send(msg); } catch(e) {} });
   document.getElementById('viewer-count').textContent = connections.length ? ' · 1 Live đang điều khiển' : '';
@@ -453,6 +473,8 @@ function adminSpeak(name) {
   const n = cleanForSpeech(name);
   if (!n) return;
   const text = n + ' đã vào sàn nhảy';
+  sendAudio({type:'audio-say', text});
+  if (document.getElementById('external-audio-mode').checked) return;
   adminTtsChain = adminTtsChain.then(async () => {
     adminDuck(true);
     let ok = await adminPlayGoogle(text);
@@ -649,6 +671,13 @@ function playMusic() {
   const frame = document.getElementById('music-frame');
   const audioEl = document.getElementById('music-audio');
 
+  if (document.getElementById('external-audio-mode').checked) {
+    frame.src='about:blank'; frame.style.display='none';
+    audioEl.pause(); audioEl.removeAttribute('src'); audioEl.style.display='none';
+    box.classList.remove('show');
+    document.getElementById('music-status').textContent = 'Đã gửi nhạc sang audio.html (mở Chrome và bật âm thanh ở đó).';
+    return;
+  }
   // reset
   frame.src = 'about:blank';
   frame.style.display = 'none';
