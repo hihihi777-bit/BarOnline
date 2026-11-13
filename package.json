@@ -1,0 +1,1 @@
+{ "name":"djbar-tiktok-bridge", "version":"1.0.0", "private":true, "description":"Local TikTok LIVE !nhay bridge", "scripts":{"start":"node tiktok-bridge.js"}, "dependencies":{"tiktok-live-connector":"^2.1.0"} }

@@ -1,0 +1,23 @@
+DJ BAR — TIKTOK UP (Windows, cùng máy livestream)
+
+1. Cài Node.js LTS từ nodejs.org.
+2. Mở PowerShell trong thư mục giải nén, chạy: npm install
+3. Chạy với tên TikTok của BẠN, không có @:
+   $env:TIKTOK_USERNAME="ten_tiktok_cua_ban"
+   npm start
+   (CMD: set TIKTOK_USERNAME=ten_tiktok_cua_ban && npm start)
+4. Bắt đầu LIVE trên TikTok trước; nếu connector báo chưa LIVE, chờ và khởi động lại.
+5. Upload admin.html mới cùng livebar.html và audio.html lên cùng hosting.
+6. Mở admin.html và audio.html bằng Chrome trên máy livestream, bật audio.html một lần.
+7. TikTok LIVE Studio: Website = livebar.html?audio=off; thu tiếng Chrome bằng Audio Capture/Desktop Audio.
+8. Người xem bình luận chính xác up. Admin phải đang mở, kết nối được Live, bật 'Tự động cho lên sàn'.
+
+LƯU Ý:
+- Connector tiktok-live-connector là thư viện cộng đồng, KHÔNG phải API TikTok chính thức. TikTok có thể thay đổi khiến kết nối lỗi.
+- Chỉ nhận bình luận từ LIVE đang phát; cần Internet.
+- Trang admin.html trên HTTPS có thể bị Chrome chặn truy cập http://127.0.0.1 vì chính sách mạng riêng / local network access. Nếu Admin báo không kết nối Bridge, kiểm tra quyền truy cập mạng cục bộ của Chrome hoặc chạy Admin qua localhost trong môi trường tin cậy.
+- Bridge chỉ nghe 127.0.0.1, không mở cổng ra Internet.
+- Chỉ đưa tên hiển thị (nickname) lên sân; bản này KHÔNG lấy ảnh đại diện TikTok vì sân khấu hiện tại dùng nhân vật 3D với nhãn tên.
+- Một tài khoản chỉ kích hoạt một lần trong 2 phút; trùng tên đang trên sàn không được thêm lần nữa.
+- Không dùng dữ liệu TikTok để spam, không yêu cầu mật khẩu hoặc cookie TikTok.
+- Nếu npm install báo phiên bản package không có, hãy chạy npm install tiktok-live-connector@latest rồi npm start.

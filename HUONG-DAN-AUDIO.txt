@@ -1,0 +1,13 @@
+DJ BAR - HUONG DAN AM THANH RIENG
+
+1. Upload admin.html, livebar.html, audio.html cung thu muc / cung ten mien.
+2. Mo admin.html va audio.html trong Chrome cung may tinh, cung ten mien.
+3. Tren audio.html bam BAT AM THANH mot lan.
+4. Trong TikTok LIVE Studio, nguon Website dung URL livebar.html?audio=off
+5. Bat nguon thu am thanh Chrome / Desktop Audio trong LIVE Studio; kiem tra dong ho am luong.
+6. Phat nhac va them ten tai Admin; audio.html se phat nhac va MC.
+7. Neu YouTube / SoundCloud khong tu phat, bam Play trong iframe audio.html.
+
+Luu y: Web Audio / browser autoplay khong the tu vuot chinh sach; can 1 lan click.
+PeerJS san khau van su dung server cong cong; tranh mo nhieu livebar.html cung room.
+Neu nguon Website khong thu am thanh, audio.html phai duoc thu qua Desktop Audio / Application Audio Capture.

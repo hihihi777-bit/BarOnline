@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
+<title>DJ Bar — Bảng điều khiển</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:system-ui,-apple-system,sans-serif;background:#0c0814;color:#fff;min-height:100vh;padding:16px}
+h1{font-size:20px;background:linear-gradient(90deg,#ff66cc,#b14dff,#00e0ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:2px}
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.who{font-size:12px;color:rgba(255,255,255,.45)}
+.who button{margin-left:8px;background:none;border:1px solid rgba(255,255,255,.2);color:#aaa;border-radius:8px;padding:4px 10px;cursor:pointer;font-size:12px}
+.card{background:rgba(255,255,255,.05);border:1px solid rgba(180,80,255,.25);border-radius:14px;padding:14px;margin-bottom:12px}
+.card h2{font-size:13px;color:#00e0ff;margin-bottom:10px;text-transform:uppercase;letter-spacing:.4px}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;align-items:center}
+input{flex:1;min-width:120px;background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:11px 12px;color:#fff;font-size:14px;outline:none}
+input:focus{border-color:#b14dff}
+.btn{border:none;color:#fff;padding:11px 14px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap}
+.btn-add{background:linear-gradient(135deg,#00e0ff,#0080ff)}
+.btn-play{background:linear-gradient(135deg,#b14dff,#ff2a6d)}
+.btn-stop{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2)}
+.btn-clear{background:rgba(255,60,80,.25);border:1px solid rgba(255,60,80,.4)}
+.btn-room{background:linear-gradient(135deg,#ff9f1a,#ff6b00)}
+.room-code{
+  font-size:28px;font-weight:800;letter-spacing:6px;text-align:center;
+  color:#00e0ff;text-shadow:0 0 16px rgba(0,220,255,.5);
+  padding:10px;background:rgba(0,0,0,.35);border-radius:12px;margin:8px 0;
+  font-family:ui-monospace,monospace;
+}
+.status-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;background:#666}
+.status-dot.on{background:#00ffa8;box-shadow:0 0 8px #00ffa8}
+.list{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;max-height:200px;overflow-y:auto}
+.chip{background:rgba(180,80,255,.2);border:1px solid rgba(180,80,255,.4);border-radius:20px;padding:5px 10px 5px 12px;font-size:13px;display:flex;align-items:center;gap:6px}
+.chip button{background:rgba(255,255,255,.15);border:none;color:#fff;width:20px;height:20px;border-radius:50%;cursor:pointer;font-size:12px}
+.chip button:hover{background:#ff2a6d}
+.status{font-size:12px;color:rgba(255,255,255,.4);margin-top:6px}
+.hint{font-size:12px;color:rgba(255,255,255,.35);line-height:1.5;margin-top:6px}
+.preview-led{margin-top:8px;background:#0d0618;border:1px solid #ff66cc;border-radius:8px;padding:10px 0;overflow:hidden;height:38px;display:flex;align-items:center;box-shadow:0 0 12px rgba(255,100,200,.25)}
+.preview-led .track{display:flex;white-space:nowrap;animation:mq 12s linear infinite}
+.preview-led span{font-size:13px;font-weight:700;letter-spacing:2px;color:#ff66cc;text-shadow:0 0 8px #ff66cc;padding:0 36px;font-family:'Courier New',monospace}
+@keyframes mq{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+#music-player-box{
+  margin-top:10px;width:100%;min-height:0;border-radius:10px;overflow:hidden;
+  background:#0a0612;border:1px solid rgba(180,80,255,.25);display:none;
+}
+#music-player-box.show{display:block}
+#music-frame{width:100%;height:160px;border:0;display:block;background:#000}
+#music-audio{width:100%;margin-top:8px;display:none}
+.viewers{font-size:12px;color:#00ffa8}
+</style>
+</head>
+<body>
+<div class="top">
+  <div>
+    <h1>DJ Bar — Điều khiển</h1>
+    <div class="who">Admin: <strong id="admin-name">—</strong>
+      <button id="btn-logout">Đăng xuất</button>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Kết nối một màn hình Live</h2>
+  <div class="row">
+    <input id="room-input" value="BARLIVE7F42C9" maxlength="32" placeholder="Mã Live cố định" autocomplete="off"/>
+    <button class="btn btn-room" id="btn-connect-room">Kết nối Live</button>
+  </div>
+  <p class="status"><span class="status-dot" id="conn-dot"></span><span id="conn-status">Đang khởi tạo...</span><span class="viewers" id="viewer-count"></span></p>
+  <p class="hint">Mở livebar.html trên thiết bị phát Live trước, sau đó bấm Kết nối Live tại đây. Chỉ điều khiển một Live tại một thời điểm, không cần chung Wi-Fi. Mã mặc định: BARLIVE7F42C9.</p>
+</div>
+
+
+<div class="card" id="tiktok-join-card">
+  <h2>TikTok LIVE · Bình luận up</h2>
+  <p class="hint">Chạy TikTok Bridge trên máy livestream. Khi người xem comment up, Admin sẽ tự thêm tên vào sàn và gọi MC qua Audio Player. Giữ tab Admin mở.</p>
+  <div class="row" style="margin-top:10px"><label style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="tt-auto-join" style="min-width:0;flex:none;width:18px;height:18px" checked> Tự động cho lên sàn</label></div>
+  <p class="status" id="tt-join-status">Đang kiểm tra TikTok Bridge...</p>
+  <p class="hint">Bridge chỉ chạy tại 127.0.0.1:17345. Trình duyệt có thể chặn truy cập localhost từ hosting HTTPS; khi đó xem hướng dẫn kèm ZIP.</p>
+</div>
+
+<div class="card">
+  <h2>Tên bài hát (chữ LED)</h2>
+  <div class="row">
+    <input id="song-input" placeholder="VD: Em của ngày hôm qua" value="Funk Pulse"/>
+    <button class="btn btn-play" id="btn-song">Cập nhật LED</button>
+  </div>
+  <div class="preview-led"><div class="track" id="led-preview"><span>♪ FUNK PULSE  ·  </span><span>♪ FUNK PULSE  ·  </span></div></div>
+</div>
+
+<div class="card">
+  <h2>Chữ trên bàn DJ đối diện</h2>
+  <div class="row">
+    <input id="dj-label-input" maxlength="38" placeholder="VD: DJ HẢI REMIX" value="DJ BAR LIVE"/>
+    <button class="btn btn-play" id="btn-dj-label">Đổi chữ bàn DJ</button>
+  </div>
+  <p class="hint">Chữ sẽ hiển thị trên mặt trước bàn DJ và tự cập nhật ở các điện thoại đang xem.</p>
+</div>
+
+<div class="card">
+  <h2>Nhạc (YouTube / SoundCloud / mp3)</h2>
+  <div class="row">
+    <input id="music-url" placeholder="Dán link YouTube / SoundCloud / mp3..."/>
+    <button class="btn btn-play" id="btn-play">Phát</button>
+    <button class="btn btn-stop" id="btn-stop">Dừng</button>
+  </div>
+  <p class="status" id="music-status">Chưa phát nhạc — player hiện bên dưới khi phát</p>
+  <p class="hint">Nhạc được gửi sang các sân khấu đang kết nối. Trên điện thoại, bấm Bật nhạc nếu trình duyệt chặn tự phát. SoundCloud: nếu trình duyệt chặn tự phát, bấm ▶ trong khung SoundCloud. Link riêng tư hoặc bị hạn chế nhúng có thể không phát được.</p>
+  <label style="display:block;margin:12px 0;padding:10px;background:#142332;border-radius:8px">
+    <input id="external-audio-mode" type="checkbox" checked style="width:auto;margin-right:8px">
+    Dùng audio.html để phát tiếng (không phát trùng tại Admin)
+  </label>
+  <p class="status">Mở <a href="audio.html" target="_blank" rel="noopener" style="color:#80dfff">Audio Player ↗</a> trên Chrome cùng máy và cùng tên miền.</p>
+  <div id="music-player-box">
+    <iframe id="music-frame" allow="autoplay; encrypted-media; clipboard-write; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+    <audio id="music-audio" controls loop></audio>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Giọng đọc tiếng Việt (VoiceRSS — miễn phí)</h2>
+  <div class="row">
+    <input id="tts-key" placeholder="Dán khóa API VoiceRSS (tùy chọn)"/>
+    <button class="btn btn-add" id="btn-save-key">Lưu & gửi sang điện thoại</button>
+    <button class="btn btn-stop" id="btn-test-voice">Thử đọc</button>
+  </div>
+  <p class="status" id="tts-status"></p>
+  <p class="hint">Dùng khi Google bị chặn và máy chưa có giọng Việt. Đăng ký miễn phí tại voicerss.org → lấy API key → dán vào đây. Khóa được gửi tự động sang điện thoại trong phòng.</p>
+</div>
+
+<div class="card">
+  <h2>Thêm người nhảy (tối đa 1000)</h2>
+  <div class="row">
+    <input id="name-input" placeholder="Gõ tên người xem..."/>
+    <button class="btn btn-add" id="btn-add">Thêm</button>
+    <button class="btn btn-clear" id="btn-clear">Xóa hết</button>
+  </div>
+  <div class="row" style="margin-top:12px">
+    <input id="guest-dj-name" list="guest-dj-options" placeholder="Tên người đang ở dưới sàn..."/>
+    <datalist id="guest-dj-options"></datalist>
+    <select id="special-dance-style" style="flex:1;min-width:140px;padding:11px;border-radius:10px;background:#171a2b;color:#fff;border:1px solid #535875"><option value="shuffle">⚡ Shuffle</option><option value="robot">🤖 Robot</option><option value="disco">🪩 Disco</option><option value="hiphop">🔥 Hip-hop</option></select>
+    <button class="btn btn-add" id="btn-dance-dj">✨ Đổi điệu nhảy</button>
+    <button class="btn btn-stop" id="btn-dance-return">Xuống sàn</button>
+  </div>
+  <div class="row" style="margin-top:12px;align-items:center">
+    <button class="btn btn-add" id="btn-mc-toggle">🎤 Tắt MC tự động</button>
+    <span class="hint">MC chỉ hiện bong bóng chat 5 câu, không đọc thành tiếng; mặc định là MC.</span>
+  </div>
+  <div class="row" style="margin-top:12px;align-items:center">
+    <input id="mc-person-name" list="guest-dj-options" placeholder="Chọn người làm MC (đã ở trong sàn)..."/>
+    <button class="btn btn-add" id="btn-mc-assign">🎤 Cho làm MC</button>
+    <button class="btn btn-stop" id="btn-mc-default">MC mặc định</button>
+  </div>
+  <p class="hint" id="mc-person-status">MC mặc định đang đứng trên bục.</p>
+  <p class="hint" id="guest-dj-status">Chọn người và điệu nhảy để lên bục biểu diễn solo.</p>
+  <div class="row" style="margin-top:12px">
+    <input id="frame-name" list="guest-dj-options" placeholder="Tên người muốn gắn khung..."/>
+    <select id="frame-style" style="flex:1;min-width:160px;padding:11px;border-radius:10px;background:#171a2b;color:white;border:1px solid #535875">
+      <option value="none">Không khung (mặc định)</option>
+      <option value="gold">🥇 Gold Elite – Bậc 4</option>
+      <option value="neon">💗 Neon hồng</option>
+      <option value="ice">❄️ Kim cương xanh</option>
+      <option value="fire">🔥 Lửa đỏ cam</option>
+      <option value="galaxy">🌌 Celestial – Bậc 5</option>
+      <option value="royal">👑 Royal Supreme – Hoàng gia (Bậc 6)</option>
+    </select>
+    <button class="btn btn-add" id="btn-set-frame">Áp dụng khung</button>
+  </div>
+  <p class="hint">Mặc định chỉ hiện tên, không có khung. Nhập tên người đang trên sàn và chọn khung; chọn Không khung để gỡ.</p>
+  <div class="list" id="name-list"></div>
+  <p class="status" id="name-status">0 / 1000 người trên sàn</p>
+  <p class="hint">Mỗi lần thêm: điện thoại hiện thông báo + đọc tên “đã vào sàn nhảy”.</p>
+</div>
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script>
+const MAX_TOTAL = 1000;
+setInterval(() => {
+  try {
+    if (window.speechSynthesis && window.speechSynthesis.speaking && window.speechSynthesis.paused) {
+      window.speechSynthesis.resume();
+    }
+  } catch (e) {}
+}, 200);
+
+let ttsKey = '';
+try { ttsKey = localStorage.getItem('djbar_tts_key') || ''; } catch (e) {}
+let names = [];
+let guestDjName = '';
+let mcEnabled = true;
+let mcPersonName = '';
+let specialDanceStyle = 'shuffle';
+let nameFrames = {};
+try { nameFrames=JSON.parse(localStorage.getItem('djbar_name_frames')||'{}')||{}; } catch(e) {}
+let song = 'Funk Pulse';
+let djLabel = 'DJ BAR LIVE';
+let musicUrl = '';
+let musicRevision = 0;
+let roomCode = '';
+let peer = null;
+let connections = []; // stage viewers
+// Audio Player chạy trong Chrome cùng origin; không cần PeerJS thứ hai.
+const audioBus = ('BroadcastChannel' in window) ? new BroadcastChannel('djbar-audio-v1') : null;
+let audioPlayerReady = false;
+function sendAudio(message) {
+  if (audioBus) audioBus.postMessage(message);
+  if (!audioBus) try { localStorage.setItem('djbar_audio_event', JSON.stringify({...message, _id: Date.now() + '-' + Math.random()})); } catch(e) {}
+}
+if (audioBus) audioBus.onmessage = ({data}) => {
+  if (data?.type === 'audio-ready') {
+    audioPlayerReady = true;
+    sendAudio({type:'state', musicUrl, musicRevision, ttsKey});
+  }
+};
+
+
+// Auth check
+(function () {
+  try {
+    const s = JSON.parse(sessionStorage.getItem('djbar_admin') || 'null');
+    if (!s || !s.user) { location.href = 'index.html'; return; }
+    document.getElementById('admin-name').textContent = s.user;
+  } catch {
+    location.href = 'index.html';
+  }
+})();
+
+document.getElementById('btn-logout').onclick = () => {
+  sessionStorage.removeItem('djbar_admin');
+  location.href = 'index.html';
+};
+
+// Admin kết nối đến một Live cố định. Chống kết nối chồng và tự phục hồi.
+const DEFAULT_LIVE_CODE = 'BARLIVE7F42C9';
+let reconnectTimer = null;
+let connecting = false;
+let connectAttempt = 0;
+let pendingConnection = null;
+let peerRestartTimer = null;
+let retryCount = 0;
+let lastPong = 0;
+function getState() {
+  return { type: 'state', names: [...names], song, djLabel, ttsKey, musicUrl, musicRevision, guestDjName, specialDanceStyle, mcEnabled, mcPersonName, nameFrames: {...nameFrames} };
+}
+function setStatus(message, on) {
+  document.getElementById('conn-status').textContent = message;
+  document.getElementById('conn-dot').className = 'status-dot' + (on ? ' on' : '');
+}
+function broadcast(msg) {
+  sendAudio(msg);
+  connections = connections.filter(c => c.open);
+  connections.forEach(c => { try { c.send(msg); } catch(e) {} });
+  document.getElementById('viewer-count').textContent = connections.length ? ' · 1 Live đang điều khiển' : '';
+}
+function pushState() { broadcast(getState()); }
+function scheduleReconnect() {
+  if (reconnectTimer || connections.some(c => c.open)) return;
+  const delay = Math.min(5000, 700 * Math.pow(1.5, Math.min(retryCount++, 5)));
+  reconnectTimer = setTimeout(() => { reconnectTimer = null; connectLive(); }, delay);
+}
+function connectLive() {
+  clearTimeout(reconnectTimer); reconnectTimer = null;
+  if (connections.some(c => c.open) || connecting) return;
+  if (!peer || peer.destroyed || !peer.open) {
+    setStatus('Đang kết nối máy chủ tín hiệu...', false);
+    return;
+  }
+  const code = document.getElementById('room-input').value.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (!code) { setStatus('Nhập mã Live trước', false); return; }
+  roomCode = code;
+  try { localStorage.setItem('djbar_live_code', code); } catch(e) {}
+  connecting = true;
+  const attempt = ++connectAttempt;
+  setStatus('Đang kết nối màn hình Live...', false);
+  let c;
+  try { c = peer.connect('djbar-' + code, { reliable: true, serialization: 'json' }); }
+  catch(e) { connecting = false; setStatus('Chưa kết nối được · sẽ thử lại', false); scheduleReconnect(); return; }
+  pendingConnection = c;
+  let completed = false;
+  // ICE/WebRTC trên mạng di động có thể mất hơn 6 giây.
+  const timeout = setTimeout(() => {
+    if (completed || attempt !== connectAttempt) return;
+    connecting = false; pendingConnection = null;
+    try { c.close(); } catch(e) {}
+    setStatus('Live chưa phản hồi · tự thử lại...', false);
+    scheduleReconnect();
+  }, 8500);
+  c.on('open', () => {
+    if (attempt !== connectAttempt || completed) { try { c.close(); } catch(e) {} return; }
+    completed = true; clearTimeout(timeout); connecting = false; pendingConnection = null;
+    connections.forEach(old => { if (old !== c) try { old.close(); } catch(e) {} });
+    connections = [c]; retryCount = 0; lastPong = Date.now();
+    setStatus('Đã kết nối Live', true);
+    try { c.send(getState()); } catch(e) {}
+    document.getElementById('viewer-count').textContent = ' · 1 Live đang điều khiển';
+  });
+  c.on('data', data => {
+    if (data && data.type === 'pong') { lastPong = Date.now(); return; }
+    if (data && data.type === 'hello' && c.open) { lastPong = Date.now(); c.send(getState()); }
+  });
+  function lost() {
+    clearTimeout(timeout);
+    if (attempt !== connectAttempt) return;
+    connecting = false;
+    if (pendingConnection === c) pendingConnection = null;
+    connections = connections.filter(x => x !== c);
+    if (!connections.length) {
+      setStatus('Mất kết nối Live · đang khôi phục...', false);
+      document.getElementById('viewer-count').textContent = '';
+      scheduleReconnect();
+    }
+  }
+  c.on('close', lost);
+  c.on('error', lost);
+}
+// Ping giúp phát hiện kết nối đã chết nhưng trình duyệt chưa báo close.
+setInterval(() => {
+  const c = connections.find(x => x.open);
+  if (!c) return;
+  if (Date.now() - lastPong > 16000) {
+    setStatus('Live không phản hồi · đang khôi phục...', false);
+    connectAttempt++;
+    connections = [];
+    try { c.close(); } catch(e) {}
+    connecting = false;
+    scheduleReconnect();
+    return;
+  }
+  try { c.send({type:'ping'}); } catch(e) {}
+}, 5000);
+function initAdminPeer() {
+  clearTimeout(peerRestartTimer);
+  connectAttempt++; connecting = false; pendingConnection = null;
+  if (peer) try { peer.destroy(); } catch(e) {}
+  peer = new Peer({
+    debug: 0,
+    config: { iceServers: [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:global.stun.twilio.com:3478' }
+    ] }
+  });
+  const currentPeer = peer;
+  peer.on('open', () => { if (peer !== currentPeer) return; setStatus('Sẵn sàng kết nối Live', false); retryCount = 0; connectLive(); });
+  peer.on('disconnected', () => {
+    if (peer !== currentPeer) return;
+    setStatus('Mất máy chủ tín hiệu · đang khôi phục...', false);
+    try { currentPeer.reconnect(); } catch(e) {}
+    clearTimeout(peerRestartTimer);
+    peerRestartTimer = setTimeout(() => { if (peer === currentPeer && !currentPeer.open) initAdminPeer(); }, 4500);
+  });
+  peer.on('error', err => {
+    if (peer !== currentPeer) return;
+    console.warn('Admin PeerJS:', err);
+    if (err.type === 'peer-unavailable') { connecting = false; scheduleReconnect(); return; }
+    setStatus('Lỗi tín hiệu: ' + (err.type || 'mạng'), false);
+    if (!currentPeer.open || currentPeer.destroyed) {
+      clearTimeout(peerRestartTimer);
+      peerRestartTimer = setTimeout(() => { if (peer === currentPeer) initAdminPeer(); }, 2500);
+    } else { connecting = false; scheduleReconnect(); }
+  });
+}
+document.getElementById('btn-connect-room').onclick = () => {
+  connectAttempt++; connecting = false; retryCount = 0;
+  clearTimeout(reconnectTimer); reconnectTimer = null;
+  if (pendingConnection) try { pendingConnection.close(); } catch(e) {}
+  pendingConnection = null;
+  connections.forEach(c => { try { c.close(); } catch(e) {} });
+  connections = [];
+  document.getElementById('viewer-count').textContent = '';
+  connectLive();
+};
+
+// Song
+function updateLedPreview() {
+  const t = '♪ ' + (song || 'FUNK PULSE').toUpperCase() + '  ·  ';
+  document.getElementById('led-preview').innerHTML = '<span>' + t + '</span><span>' + t + '</span>';
+}
+function updateSong() {
+  song = document.getElementById('song-input').value.trim() || 'Funk Pulse';
+  updateLedPreview();
+  broadcast({ type: 'song', title: song });
+  pushState();
+}
+document.getElementById('btn-song').onclick = updateSong;
+function updateDjLabel() {
+  djLabel = document.getElementById('dj-label-input').value.trim().slice(0, 38) || 'DJ BAR LIVE';
+  broadcast({ type: 'dj-label', text: djLabel });
+}
+document.getElementById('btn-dj-label').onclick = updateDjLabel;
+document.getElementById('dj-label-input').addEventListener('keydown', e => { if (e.key === 'Enter') updateDjLabel(); });
+document.getElementById('song-input').addEventListener('keydown', e => { if (e.key === 'Enter') updateSong(); });
+
+// Names
+function escapeHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function renderList() {
+  const list = document.getElementById('name-list');
+  list.innerHTML = '';
+  names.slice(-80).forEach(n => {
+    const chip = document.createElement('div');
+    chip.className = 'chip';
+    chip.innerHTML = '<span>' + escapeHtml(n) + (nameFrames[n.toLowerCase()] ? ' ✨' : '') + '</span>';
+    const btn = document.createElement('button');
+    btn.textContent = '×';
+    btn.onclick = () => removeName(n);
+    chip.appendChild(btn);
+    list.appendChild(chip);
+  });
+  const opts=document.getElementById('guest-dj-options');
+  opts.replaceChildren(...names.map(n=>{const o=document.createElement('option');o.value=n;return o;}));
+  document.getElementById('name-status').textContent = names.length + ' / ' + MAX_TOTAL + ' người trên sàn';
+}
+// ---- Đọc tên tiếng Việt có dấu trên máy admin ----
+function cleanForSpeech(str) {
+  let t = String(str || '').normalize('NFC');
+  t = t.replace(/[_]+/g, ' ')
+       .replace(/[^\p{L}\p{M}\p{N}\s.,'’-]/gu, ' ')
+       .replace(/\s+/g, ' ').trim();
+  if (t.length > 3 && t === t.toLocaleUpperCase('vi')) t = t.toLocaleLowerCase('vi');
+  return t;
+}
+function adminPlayGoogle(text) {
+  const q = encodeURIComponent(text.normalize('NFC').slice(0, 180));
+  const urls = [];
+  if (ttsKey) urls.push('https://api.voicerss.org/?key=' + encodeURIComponent(ttsKey) + '&hl=vi-vn&c=MP3&f=24khz_16bit_mono&src=' + q);
+  urls.push(
+    'https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=vi&q=' + q,
+    'https://translate.google.com.vn/translate_tts?ie=UTF-8&client=tw-ob&tl=vi&q=' + q,
+    'https://translate.googleapis.com/translate_tts?ie=UTF-8&client=gtx&tl=vi&q=' + q
+  );
+  const tryOne = (url) => new Promise((resolve) => {
+    try {
+      if (!window.__adminTts) window.__adminTts = new Audio();
+      const a = window.__adminTts;
+      try { a.pause(); } catch (e) {}
+      let finished = false, started = false, t1, t2;
+      const done = (ok) => { if (finished) return; finished = true; clearTimeout(t1); clearTimeout(t2); resolve(ok); };
+      a.onplaying = () => { started = true; };
+      a.onended = () => done(true);
+      a.onerror = () => done(false);
+      a.src = url; a.volume = 1;
+      const p = a.play();
+      if (p && p.catch) p.catch(() => done(false));
+      t1 = setTimeout(() => { if (!started) done(false); }, 4500);
+      t2 = setTimeout(() => done(started), 15000);
+    } catch (e) { resolve(false); }
+  });
+  return (async () => { for (const u of urls) { if (await tryOne(u)) return true; } return false; })();
+}
+const adminUtts = [];
+function adminPlaySynth(text) {
+  return new Promise((resolve) => {
+    const synth = window.speechSynthesis;
+    const voices = synth ? (synth.getVoices() || []) : [];
+    // Chỉ dùng giọng tiếng Việt thật — giọng Anh đọc sẽ sai dấu
+    const vi = voices.find(v => /^vi([-_]|$)/i.test(v.lang || '')) ||
+               voices.find(v => /vietnam|tiếng việt/i.test(v.name || ''));
+    if (!synth || !vi) { resolve(false); return; }
+    try {
+      if (synth.speaking || synth.pending) synth.cancel();
+      if (synth.paused) synth.resume();
+      const u = new SpeechSynthesisUtterance(text);
+      u.voice = vi; u.lang = vi.lang || 'vi-VN'; u.rate = 0.9; u.volume = 1;
+      adminUtts.push(u); if (adminUtts.length > 20) adminUtts.shift();
+      u.onend = () => resolve(true);
+      u.onerror = () => resolve(false);
+      synth.speak(u);
+      setTimeout(() => resolve(true), 12000);
+    } catch (e) { resolve(false); }
+  });
+}
+function adminDuck(d) {
+  const a = document.getElementById('music-audio');
+  if (a) a.volume = d ? 0.03 : 1;
+  const f = document.getElementById('music-frame');
+  if (f && f.src.includes('youtube.com/embed/')) {
+    try { f.contentWindow.postMessage(JSON.stringify({event:'command',func:'setVolume',args:[d ? 3 : 100]}), '*'); } catch (e) {}
+  }
+}
+let adminTtsChain = Promise.resolve();
+function adminSpeak(name) {
+  const n = cleanForSpeech(name);
+  if (!n) return;
+  const text = n + ' đã vào sàn nhảy';
+  sendAudio({type:'audio-say', text});
+  if (document.getElementById('external-audio-mode').checked) return;
+  adminTtsChain = adminTtsChain.then(async () => {
+    adminDuck(true);
+    let ok = await adminPlayGoogle(text);
+    if (!ok) ok = await adminPlaySynth(text);
+    if (!ok) document.getElementById('tts-status').textContent = 'Không đọc được tiếng Việt — hãy nhập khóa VoiceRSS ở trên hoặc dùng trình duyệt Edge (có giọng Việt sẵn).';
+    await new Promise(r => setTimeout(r, 200));
+    adminDuck(false);
+  }).catch(() => { adminDuck(false); });
+}
+
+
+// ---- Khóa VoiceRSS ----
+document.getElementById('tts-key').value = ttsKey;
+document.getElementById('btn-save-key').onclick = () => {
+  ttsKey = document.getElementById('tts-key').value.trim();
+  try { localStorage.setItem('djbar_tts_key', ttsKey); } catch (e) {}
+  broadcast({ type: 'config', ttsKey });
+  pushState();
+  document.getElementById('tts-status').textContent = ttsKey ? 'Đã lưu khóa và gửi sang điện thoại' : 'Đã xóa khóa';
+};
+document.getElementById('btn-test-voice').onclick = () => {
+  document.getElementById('tts-status').textContent = 'Đang thử đọc...';
+  adminSpeak('Người chơi thử');
+};
+
+function setNameFrame(){
+  const input=document.getElementById('frame-name');
+  const found=names.find(n=>n.toLocaleLowerCase('vi')===input.value.trim().toLocaleLowerCase('vi'));
+  if(!found){alert('Hãy nhập tên người đang có trên sàn.');return;}
+  const style=document.getElementById('frame-style').value;
+  if(style==='none')delete nameFrames[found.toLowerCase()];
+  else nameFrames[found.toLowerCase()]=style;
+  try{localStorage.setItem('djbar_name_frames',JSON.stringify(nameFrames));}catch(e){}
+  renderList();broadcast({type:'name-frames',frames:{...nameFrames}});pushState();
+}
+document.getElementById('btn-set-frame').onclick=setNameFrame;
+document.getElementById('frame-name').addEventListener('keydown',e=>{if(e.key==='Enter')setNameFrame();});
+function addName() {
+
+  const input = document.getElementById('name-input');
+  const name = input.value.trim();
+  if (!name) return;
+  if (names.some(n => n.toLowerCase() === name.toLowerCase())) { input.value = ''; return; }
+  if (names.length >= MAX_TOTAL) { alert('Đã đạt tối đa 1000 người'); return; }
+  names.push(name);
+  input.value = '';
+  renderList();
+  broadcast({ type: 'add', name });
+  pushState();
+  adminSpeak(name);
+}
+function inviteGuestDj(){
+  const value=document.getElementById('guest-dj-name').value.trim();
+  const found=names.find(n=>n.toLocaleLowerCase('vi')===value.toLocaleLowerCase('vi'));
+  const status=document.getElementById('guest-dj-status');
+  if(!found){status.textContent='Tên này chưa có trên sàn. Hãy thêm người trước.';return;}
+  if(mcPersonName.toLocaleLowerCase('vi')===found.toLocaleLowerCase('vi'))resetMcPerson();
+  guestDjName=found;
+  specialDanceStyle=document.getElementById('special-dance-style').value;
+  status.textContent=found+' đang lên bục biểu diễn điệu '+specialDanceStyle+'!';
+  broadcast({type:'guest-dj',name:found,style:specialDanceStyle});pushState();
+}
+function returnGuestDj(){
+  guestDjName='';
+  document.getElementById('guest-dj-status').textContent='Đã mời khách xuống lại sàn.';
+  broadcast({type:'guest-dj',name:'',style:specialDanceStyle});pushState();
+}
+document.getElementById('btn-dance-dj').onclick=inviteGuestDj;
+document.getElementById('btn-dance-return').onclick=returnGuestDj;
+function assignMcPerson(){
+  const input=document.getElementById('mc-person-name');
+  const value=input.value.trim();
+  const found=names.find(n=>n.toLocaleLowerCase('vi')===value.toLocaleLowerCase('vi'));
+  const status=document.getElementById('mc-person-status');
+  if(!found){status.textContent='Người này chưa có trong sàn. Hãy thêm người trước.';return;}
+  if(guestDjName.toLocaleLowerCase('vi')===found.toLocaleLowerCase('vi')){
+    status.textContent='Người này đang đổi điệu nhảy. Hãy cho xuống sàn trước.';return;
+  }
+  mcPersonName=found;
+  status.textContent=found+' đang làm MC (chỉ hiện chữ, không phát tiếng).';
+  broadcast({type:'mc-person',name:found});pushState();
+}
+function resetMcPerson(){
+  mcPersonName='';
+  document.getElementById('mc-person-name').value='';
+  document.getElementById('mc-person-status').textContent='MC mặc định đang đứng trên bục.';
+  broadcast({type:'mc-person',name:''});pushState();
+}
+document.getElementById('btn-mc-assign').onclick=assignMcPerson;
+document.getElementById('btn-mc-default').onclick=resetMcPerson;
+document.getElementById('mc-person-name').addEventListener('keydown',e=>{if(e.key==='Enter')assignMcPerson();});
+document.getElementById('btn-mc-toggle').onclick=()=>{mcEnabled=!mcEnabled;document.getElementById('btn-mc-toggle').textContent=mcEnabled?'🎤 Tắt MC tự động':'🎤 Bật MC tự động';broadcast({type:'mc-toggle',enabled:mcEnabled});pushState();};
+document.getElementById('special-dance-style').onchange=()=>{specialDanceStyle=document.getElementById('special-dance-style').value;if(guestDjName){broadcast({type:'guest-dj',name:guestDjName,style:specialDanceStyle});pushState();}};
+document.getElementById('guest-dj-name').addEventListener('keydown',e=>{if(e.key==='Enter')inviteGuestDj();});
+function removeName(name) {
+  names = names.filter(n => n.toLowerCase() !== name.toLowerCase());
+  delete nameFrames[name.toLowerCase()];
+  if(guestDjName.toLowerCase()===name.toLowerCase())returnGuestDj();
+  if(mcPersonName.toLowerCase()===name.toLowerCase())resetMcPerson();
+  renderList();
+  broadcast({ type: 'remove', name });
+  pushState();
+}
+function clearAll() {
+  if (!confirm('Xóa hết tất cả người trên sàn?')) return;
+  names = [];
+  nameFrames={};
+  try{localStorage.removeItem('djbar_name_frames');}catch(e){}
+  returnGuestDj();
+  resetMcPerson();
+  renderList();
+  broadcast({ type: 'clear' });
+  pushState();
+}
+document.getElementById('btn-add').onclick = addName;
+document.getElementById('btn-clear').onclick = clearAll;
+document.getElementById('name-input').addEventListener('keydown', e => { if (e.key === 'Enter') addName(); });
+
+// Music
+function parseUrl(url) {
+  url = url.trim();
+  if (!url) return null;
+  let m = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/live\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/);
+  if (m) {
+    const id = m[1];
+    return {
+      type: 'yt',
+      embed: 'https://www.youtube.com/embed/' + id + '?autoplay=1&enablejsapi=1&loop=1&playlist=' + id + '&playsinline=1&rel=0&modestbranding=1'
+    };
+  }
+  if (/^https?:\/\/(?:[a-z0-9-]+\.)?soundcloud\.com\//i.test(url)) {
+    return {
+      type: 'sc',
+      embed: 'https://w.soundcloud.com/player/?url=' + encodeURIComponent(url) + '&auto_play=false&hide_related=true&show_comments=false&visual=false&show_teaser=false'
+    };
+  }
+  if (url.match(/\.(mp3|ogg|wav|m4a)(\?|$)/i)) return { type: 'audio', src: url };
+  return { type: 'iframe', embed: url };
+}
+
+let adminScWidget = null;
+let adminScRequest = 0;
+let adminScApiPromise = null;
+function loadAdminScApi() {
+  if (window.SC && window.SC.Widget) return Promise.resolve(true);
+  if (adminScApiPromise) return adminScApiPromise;
+  adminScApiPromise = new Promise(resolve => {
+    const script = document.createElement('script');
+    script.src = 'https://w.soundcloud.com/player/api.js';
+    script.onload = () => resolve(!!(window.SC && window.SC.Widget));
+    script.onerror = () => resolve(false);
+    document.head.appendChild(script);
+  });
+  return adminScApiPromise;
+}
+async function setupAdminSc(frame, request) {
+  if (!await loadAdminScApi() || request !== adminScRequest) {
+    if (request === adminScRequest) document.getElementById('music-status').textContent = 'SoundCloud: hãy bấm ▶ trong khung nhạc.';
+    return;
+  }
+  const widget = window.SC.Widget(frame);
+  adminScWidget = widget;
+  widget.bind(window.SC.Widget.Events.READY, () => {
+    if (request !== adminScRequest) return;
+    document.getElementById('music-status').textContent = 'SoundCloud đã tải — bấm ▶ trong khung để nghe nếu chưa tự phát.';
+    // Lệnh này có thể bị trình duyệt chặn: người dùng vẫn có thể bấm trong iframe.
+    try { widget.play(); } catch (e) {}
+  });
+  widget.bind(window.SC.Widget.Events.PLAY, () => {
+    if (request === adminScRequest) document.getElementById('music-status').textContent = 'SoundCloud đang phát ♪';
+  });
+  widget.bind(window.SC.Widget.Events.ERROR, () => {
+    if (request === adminScRequest) document.getElementById('music-status').textContent = 'SoundCloud không tải được bài này. Kiểm tra link công khai và quyền nhúng.';
+  });
+}
+
+function playMusic() {
+  const url = document.getElementById('music-url').value.trim();
+  if (!url) {
+    document.getElementById('music-status').textContent = 'Hãy dán link nhạc trước';
+    return;
+  }
+  const p = parseUrl(url);
+  if (!p) {
+    document.getElementById('music-status').textContent = 'Link không hợp lệ';
+    return;
+  }
+
+  adminScRequest++; adminScWidget = null;
+  musicUrl = url;
+  musicRevision++;
+  broadcast({ type: 'music', url: musicUrl, revision: musicRevision });
+  const box = document.getElementById('music-player-box');
+  const frame = document.getElementById('music-frame');
+  const audioEl = document.getElementById('music-audio');
+
+  if (document.getElementById('external-audio-mode').checked) {
+    frame.src='about:blank'; frame.style.display='none';
+    audioEl.pause(); audioEl.removeAttribute('src'); audioEl.style.display='none';
+    box.classList.remove('show');
+    document.getElementById('music-status').textContent = 'Đã gửi nhạc sang audio.html (mở Chrome và bật âm thanh ở đó).';
+    return;
+  }
+  // reset
+  frame.src = 'about:blank';
+  frame.style.display = 'none';
+  audioEl.style.display = 'none';
+  audioEl.pause();
+  audioEl.removeAttribute('src');
+  box.classList.add('show');
+
+  if (p.type === 'audio') {
+    audioEl.style.display = 'block';
+    audioEl.src = p.src;
+    audioEl.play().then(() => {
+      document.getElementById('music-status').textContent = 'Đang phát: File audio';
+    }).catch(err => {
+      document.getElementById('music-status').textContent = 'Lỗi phát audio — bấm ▶ trên thanh phát';
+    });
+    return;
+  }
+
+  frame.style.display = 'block';
+  // YouTube / SoundCloud: hiện player để trình duyệt cho phép tiếng
+  frame.src = p.embed;
+  if (p.type === 'sc') setupAdminSc(frame, adminScRequest);
+  const label = p.type === 'yt' ? 'YouTube' : p.type === 'sc' ? 'SoundCloud' : 'Nhạc';
+  document.getElementById('music-status').textContent = 'Đang phát: ' + label + ' (bật tiếng trên player nếu bị tắt)';
+}
+
+function stopMusic() {
+  adminScRequest++; adminScWidget = null;
+  musicUrl = '';
+  musicRevision++;
+  broadcast({ type: 'music-stop', revision: musicRevision });
+  const box = document.getElementById('music-player-box');
+  const frame = document.getElementById('music-frame');
+  const audioEl = document.getElementById('music-audio');
+  frame.src = 'about:blank';
+  frame.style.display = 'none';
+  audioEl.pause();
+  audioEl.removeAttribute('src');
+  audioEl.style.display = 'none';
+  box.classList.remove('show');
+  document.getElementById('music-status').textContent = 'Đã dừng';
+}
+
+document.getElementById('btn-play').onclick = playMusic;
+document.getElementById('btn-stop').onclick = stopMusic;
+document.getElementById('music-url').addEventListener('keydown', e => { if (e.key === 'Enter') playMusic(); });
+
+// Khởi tạo Admin, tự tìm Live khi mở trang.
+updateLedPreview();
+renderList();
+try { document.getElementById('room-input').value = localStorage.getItem('djbar_live_code') || DEFAULT_LIVE_CODE; } catch(e) {}
+initAdminPeer();
+if (window.speechSynthesis) {
+  window.speechSynthesis.getVoices();
+  window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+}
+
+// TikTok up bridge: polling local service; only Admin sends the existing "add" message.
+(function initTikTokJoin(){
+  const statusEl=document.getElementById('tt-join-status');
+  const toggle=document.getElementById('tt-auto-join');
+  if(!statusEl || !toggle) return;
+  try{toggle.checked=localStorage.getItem('djbar_tiktok_auto_join')!=='false';}catch(e){}
+  toggle.onchange=()=>{try{localStorage.setItem('djbar_tiktok_auto_join',String(toggle.checked));}catch(e){}};
+  let cursor=0, initialized=false, busy=false;
+  async function poll(){
+    if(busy)return; busy=true;
+    try{
+      const response=await fetch('http://127.0.0.1:17345/events?after='+cursor,{cache:'no-store',signal:AbortSignal.timeout(2500)});
+      if(!response.ok)throw new Error('HTTP '+response.status);
+      const data=await response.json();
+      statusEl.textContent=(data.connected?'🟢 ':'🟠 ')+(data.status||'Bridge đang chạy')+(data.lastError?' · '+data.lastError:'');
+      if(!initialized){cursor=Number(data.latestId)||0;initialized=true;return;} // avoid replaying old joins after reload
+      for(const event of (data.events||[])){
+        cursor=Math.max(cursor,Number(event.id)||0);
+        if(!toggle.checked)continue;
+        const name=String(event.name||'').trim().slice(0,36);
+        if(!name || names.length>=MAX_TOTAL || names.some(n=>n.toLocaleLowerCase('vi')===name.toLocaleLowerCase('vi')))continue;
+        document.getElementById('name-input').value=name;
+        addName();
+      }
+    }catch(e){statusEl.textContent='🔴 Không kết nối được TikTok Bridge trên máy này. Kiểm tra chương trình và quyền truy cập localhost.';}
+    finally{busy=false;}
+  }
+  poll();setInterval(poll,1300);
+})();
+</script>
+</body>
+</html>
