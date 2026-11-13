@@ -20,7 +20,28 @@ function speech(text){return new Promise(resolve=>{const s=window.speechSynthesi
 async function audioTts(text){if(!ttsKey)return false;const url='https://api.voicerss.org/?key='+encodeURIComponent(ttsKey)+'&hl=vi-vn&c=MP3&f=24khz_16bit_mono&src='+encodeURIComponent(text);return new Promise(resolve=>{const a=new Audio(url);a.volume=1;let done=false;const finish=v=>{if(!done){done=true;resolve(v);}};a.onended=()=>finish(true);a.onerror=()=>finish(false);a.play().catch(()=>finish(false));setTimeout(()=>finish(false),12000);});}
 function say(name){const n=clean(name);if(!n)return;voiceChain=voiceChain.then(async()=>{const t=n+' đã vào sàn nhảy';$('voice-status').textContent='Đang đọc: '+t;let ok=await speech(t);if(!ok)ok=await audioTts(t);$('voice-status').textContent=ok?'Đã đọc: '+t:'Không đọc được: cài giọng tiếng Việt hoặc VoiceRSS';if(!ok)report('Không đọc được tiếng Việt',false);}).catch(console.warn);}
 function receive(d){if(!d||!d.type)return;if(d.type==='ping'){conn.send({type:'pong'});return;}if(d.type==='state'){ttsKey=d.ttsKey||'';playMusic(d.musicUrl||'',d.musicRevision);return;}if(d.type==='config'){ttsKey=d.ttsKey||'';return;}if(d.type==='music'){playMusic(d.url||'',d.revision);return;}if(d.type==='music-stop'){playMusic('',d.revision);return;}if(d.type==='add'){say(d.name);return;}if(d.type==='test-voice')say('Người chơi thử');}
-function connect(){const code=$('room').value.trim().toUpperCase().replace(/[^A-Z0-9]/g,'');if(!code){status('Nhập mã Live');return;}if(peer)try{peer.destroy();}catch(e){}peer=new Peer('djbar-audio-'+code,{debug:0,config:{iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:global.stun.twilio.com:3478'}]}});peer.on('open',()=>{report('Đang chờ Admin kết nối...',true);});peer.on('connection',c=>{if(conn&&conn.open){c.on('open',()=>c.close());return;}conn=c;c.on('open',()=>{report('Đã kết nối Admin — sẵn sàng',true);c.send({type:'hello'});});c.on('data',receive);c.on('close',()=>{if(conn===c)conn=null;status('Admin mất kết nối — chờ kết nối lại');});});peer.on('error',e=>{status('Lỗi PeerJS: '+(e.type||e.message||e));if(e.type==='unavailable-id')status('Trang âm thanh đang mở ở tab khác. Chỉ mở một tab âm thanh.');});peer.on('disconnected',()=>{status('Mất tín hiệu — đang kết nối lại');try{peer.reconnect();}catch(e){}});}
+let audioReconnectTimer=null;
+function retryAudio(){clearTimeout(audioReconnectTimer);audioReconnectTimer=setTimeout(connect,4000);}
+function connect(){
+ const code=$('room').value.trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
+ if(!code){status('Nhập mã Live');return;}
+ if(peer)try{peer.destroy();}catch(e){}
+ if(conn)try{conn.close();}catch(e){}
+ peer=new Peer({debug:0,config:{iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:global.stun.twilio.com:3478'}]}});
+ const p=peer;
+ p.on('open',()=>{
+  if(peer!==p)return;
+  status('Đang kết nối Admin...');
+  const c=p.connect('djbar-'+code,{reliable:true,metadata:{role:'audio'}});conn=c;
+  const timeout=setTimeout(()=>{if(conn===c&&!c.open){status('Chưa tìm thấy Admin — thử lại');retryAudio();}},15000);
+  c.on('open',()=>{clearTimeout(timeout);report('Đã kết nối Admin — sẵn sàng',true);c.send({type:'hello'});});
+  c.on('data',receive);
+  c.on('close',()=>{clearTimeout(timeout);if(conn===c){conn=null;status('Mất kết nối Admin — thử lại');retryAudio();}});
+  c.on('error',()=>{clearTimeout(timeout);if(conn===c){conn=null;status('Lỗi kết nối — thử lại');retryAudio();}});
+ });
+ p.on('error',e=>{if(peer===p){status('Lỗi PeerJS: '+(e.type||e.message||e));retryAudio();}});
+ p.on('disconnected',()=>{if(peer===p){try{p.reconnect();}catch(e){}retryAudio();}});
+}
 $('start').onclick=()=>{active=true;try{const ctx=new (window.AudioContext||window.webkitAudioContext)();ctx.resume();const b=ctx.createBuffer(1,1,22050),s=ctx.createBufferSource();s.buffer=b;s.connect(ctx.destination);s.start();}catch(e){}try{speechSynthesis.getVoices();speechSynthesis.resume();}catch(e){}try{localStorage.setItem('djbar_audio_code',$('room').value);}catch(e){}connect();};
 try{$('room').value=localStorage.getItem('djbar_audio_code')||'BARLIVE001';}catch(e){}
 </script></body></html>
