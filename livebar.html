@@ -972,6 +972,8 @@ function rebuildVisual() {
 
 
 let speechReady = false;
+// Website source: attempt audio initialization, but Chromium may require a real user gesture.
+let stageAudioBlocked = false;
 let cachedVoices = [];
 let speakChain = Promise.resolve();
 let ttsAudio = null;
@@ -1436,7 +1438,8 @@ async function initSoundCloudWidget(frame) {
   widget.bind(window.SC.Widget.Events.READY,()=>{
     if (soundcloudWidget!==widget)return;
     soundcloudReady=true;
-    if(soundcloudPendingPlay) { try { widget.play(); } catch(e) {} }
+    soundcloudPendingPlay=true;
+    try { widget.play(); } catch(e) { console.warn('SoundCloud autoplay:',e); }
   });
   widget.bind(window.SC.Widget.Events.PLAY,()=>{
     if(soundcloudWidget!==widget)return;
@@ -1480,7 +1483,7 @@ function parseStageMusic(url) {
       else if (/^\/(embed|live|shorts)\//.test(u.pathname)) id = u.pathname.split('/')[2] || '';
     }
     if (/^[\w-]{11}$/.test(id)) return {type:'iframe',src:'https://www.youtube.com/embed/'+id+'?autoplay=1&playsinline=1&enablejsapi=1&loop=1&playlist='+id};
-    if (host === 'soundcloud.com' || host.endsWith('.soundcloud.com')) return {type:'soundcloud',src:'https://w.soundcloud.com/player/?url='+encodeURIComponent(u.href)+'&auto_play=false&show_artwork=false&visual=false'};
+    if (host === 'soundcloud.com' || host.endsWith('.soundcloud.com')) return {type:'soundcloud',src:'https://w.soundcloud.com/player/?url='+encodeURIComponent(u.href)+'&auto_play=true&show_artwork=false&visual=false'};
     if (/\.(mp3|ogg|wav|m4a)(?:$|\?)/i.test(u.pathname+u.search)) return {type:'audio',src:u.href};
   } catch(e) {}
   return null;
@@ -1515,13 +1518,13 @@ function setStageMusic(url, revision) {
     const audio = document.getElementById('stage-audio');
     audio.style.display='block'; audio.src=p.src; audio.loop=true; audio.volume=0.65;
     audio.play().then(()=>{document.getElementById('btn-music').textContent='Nhạc đang phát ♪';})
-      .catch(()=>{label.textContent='Trình duyệt chặn tự phát — bấm Bật nhạc hoặc ▶';});
+      .catch((err)=>{stageAudioBlocked=true;label.textContent='Nguồn Website chặn autoplay: '+(err && err.name || 'play failed');console.warn('Stage audio autoplay blocked:',err);});
   } else {
     const frame=document.getElementById('stage-frame');
     frame.style.display='block'; frame.src=p.src;
     if(p.type==='soundcloud'){
       label.textContent='SoundCloud: bấm Bật nhạc ▶ hoặc ▶ trong khung nếu trình duyệt chặn autoplay';
-      soundcloudPendingPlay=false;
+      soundcloudPendingPlay=true;
       initSoundCloudWidget(frame);
     } else {
       label.textContent='YouTube: nếu bị chặn tự phát, bấm ▶ trong khung bên dưới';
@@ -1696,7 +1699,7 @@ function handleMsg(data) {
 }
 
 // Live là host cố định, nhận lại Admin khi mạng bị gián đoạn.
-const LIVE_ROOM_CODE = 'BARLIVE001';
+const LIVE_ROOM_CODE = 'BARLIVE7F42C9';
 let liveRetryTimer = null;
 let liveRetryCount = 0;
 let livePeerGeneration = 0;
@@ -1786,8 +1789,11 @@ function startLiveHost() {
     console.warn('Live PeerJS:', err);
     if (err.type === 'unavailable-id') {
       setConnUI('Mã Live đang mở ở thiết bị/tab khác · hãy đóng Live cũ', false);
-      // Tránh chiếm ID và lặp kết nối liên tục khi có tab khác.
-      retryHost(15000);
+      // ID đã có chủ: không thử đăng ký lặp vô hạn. Đóng nguồn Website/tab Live khác rồi tải lại.
+      clearTimeout(liveRetryTimer);
+      if (conn) { try { conn.close(); } catch(e) {} conn = null; }
+      try { host.destroy(); } catch(e) {}
+      if (peer === host) peer = null;
     } else {
       setConnUI('Lỗi mạng · đang khôi phục Live', false);
       retryHost(Math.min(20000, 2500 * Math.pow(1.6, Math.min(liveRetryCount++, 5))));
@@ -1801,6 +1807,16 @@ if (window.speechSynthesis) {
   window.speechSynthesis.onvoiceschanged = () => refreshVoices();
 }
 
+// Best-effort startup for TikTok LIVE Studio Website source. This cannot override
+// browser autoplay permissions. The audio permission must be enabled in the source
+// or audio must be captured separately if the embedded browser refuses playback.
+window.addEventListener('load', () => {
+  // Không gọi unlockSpeech khi load: Chromium sẽ chặn AudioContext nếu chưa có user gesture.
+  // Nguồn Website trong TikTok LIVE Studio phải cho phép autoplay/capture audio.
+  const audio=document.getElementById('stage-audio');
+  if (audio) audio.addEventListener('play',()=>{stageAudioBlocked=false;});
+  if (audio) audio.addEventListener('error',()=>console.warn('Stage audio media error:',audio.error));
+});
 const btnSound = document.getElementById('btn-sound');
 if (btnSound) {
   btnSound.addEventListener('click', async () => {
