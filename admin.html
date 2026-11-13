@@ -70,6 +70,12 @@ input:focus{border-color:#b14dff}
   <p class="hint">Mở livebar.html trên thiết bị phát Live trước, sau đó bấm Kết nối Live tại đây. Chỉ điều khiển một Live tại một thời điểm, không cần chung Wi-Fi. Mã mặc định: BARLIVE001.</p>
 </div>
 
+<div class="card" style="border-color:rgba(0,255,168,.5)">
+  <h2>🔊 Bộ phát âm thanh Chrome — độc lập màn hình Live</h2>
+  <p class="status"><span class="status-dot" id="audio-dot"></span><span id="audio-status">Chờ Chrome mở dj-bar-audio.html...</span></p>
+  <p class="hint">Mở dj-bar-audio.html trong Chrome trên máy đang Live, bấm “Kích hoạt âm thanh” một lần. Admin sẽ tự kết nối cả Live và Chrome bằng cùng mã phòng. Bật thu âm thanh máy tính trong TikTok LIVE Studio.</p>
+  <div class="row" style="margin-top:10px"><button class="btn btn-add" id="btn-audio-reconnect">Kết nối lại âm thanh</button></div>
+</div>
 <div class="card">
   <h2>Tên bài hát (chữ LED)</h2>
   <div class="row">
@@ -189,16 +195,16 @@ let connections = []; // stage viewers
 (function () {
   try {
     const s = JSON.parse(sessionStorage.getItem('djbar_admin') || 'null');
-    if (!s || !s.user) { location.href = 'index.html'; return; }
+    if (!s || !s.user) { location.href = 'dj-bar-login.html'; return; }
     document.getElementById('admin-name').textContent = s.user;
   } catch {
-    location.href = 'index.html';
+    location.href = 'dj-bar-login.html';
   }
 })();
 
 document.getElementById('btn-logout').onclick = () => {
   sessionStorage.removeItem('djbar_admin');
-  location.href = 'index.html';
+  location.href = 'dj-bar-login.html';
 };
 
 // Admin kết nối đến một Live cố định. Chống kết nối chồng và tự phục hồi.
@@ -218,6 +224,7 @@ function setStatus(message, on) {
   document.getElementById('conn-dot').className = 'status-dot' + (on ? ' on' : '');
 }
 function broadcast(msg) {
+  audioSend(msg);
   connections = connections.filter(c => c.open);
   connections.forEach(c => { try { c.send(msg); } catch(e) {} });
   document.getElementById('viewer-count').textContent = connections.length ? ' · 1 Live đang điều khiển' : '';
@@ -310,7 +317,7 @@ function initAdminPeer() {
     ] }
   });
   const currentPeer = peer;
-  peer.on('open', () => { if (peer !== currentPeer) return; setStatus('Sẵn sàng kết nối Live', false); retryCount = 0; connectLive(); });
+  peer.on('open', () => { if (peer !== currentPeer) return; setStatus('Sẵn sàng kết nối Live', false); retryCount = 0; connectLive(); connectAudio(); });
   peer.on('disconnected', () => {
     if (peer !== currentPeer) return;
     setStatus('Mất máy chủ tín hiệu · đang khôi phục...', false);
@@ -338,6 +345,52 @@ document.getElementById('btn-connect-room').onclick = () => {
   connections = [];
   document.getElementById('viewer-count').textContent = '';
   connectLive();
+  ++audioGeneration; audioConnecting=false; if(audioConn)try{audioConn.close();}catch(e){} audioConn=null; connectAudio();
+};
+
+
+// Bộ phát âm thanh Chrome có Peer ID riêng; không chiếm kết nối màn hình Live.
+let audioConn = null, audioConnecting = false, audioRetryTimer = null, audioGeneration = 0;
+function audioStatus(message, ok=false) {
+  document.getElementById('audio-status').textContent=message;
+  document.getElementById('audio-dot').className='status-dot'+(ok?' on':'');
+}
+function audioSend(msg) { if(audioConn && audioConn.open) try{audioConn.send(msg);}catch(e){} }
+function audioRetry() {
+  clearTimeout(audioRetryTimer);
+  audioRetryTimer=setTimeout(connectAudio, 3500);
+}
+function connectAudio() {
+  clearTimeout(audioRetryTimer); audioRetryTimer=null;
+  if(audioConn && audioConn.open || audioConnecting) return;
+  if(!peer || !peer.open || peer.destroyed) {audioRetry();return;}
+  const code=(document.getElementById('room-input').value||DEFAULT_LIVE_CODE).trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
+  if(!code)return;
+  const generation=++audioGeneration;
+  audioConnecting=true;
+  audioStatus('Đang tìm Chrome phát âm thanh...');
+  let c;
+  try{c=peer.connect('djbar-audio-'+code,{reliable:true,serialization:'json'});}catch(e){audioConnecting=false;audioRetry();return;}
+  const timeout=setTimeout(()=>{if(generation!==audioGeneration)return;audioConnecting=false;try{c.close();}catch(e){}audioRetry();},14000);
+  c.on('open',()=>{
+    if(generation!==audioGeneration){c.close();return;}
+    clearTimeout(timeout);audioConnecting=false;
+    if(audioConn && audioConn!==c)try{audioConn.close();}catch(e){}
+    audioConn=c;audioStatus('Chrome đã kết nối — chờ kích hoạt / sẵn sàng phát',true);
+    audioSend(getState());
+  });
+  c.on('data',d=>{
+    if(generation!==audioGeneration||!d)return;
+    if(d.type==='audio-status')audioStatus('Chrome: '+String(d.message||'Đã kết nối'),!!d.ready);
+    if(d.type==='hello')audioSend(getState());
+  });
+  const lost=()=>{clearTimeout(timeout);if(generation!==audioGeneration)return;audioConnecting=false;if(audioConn===c)audioConn=null;audioStatus('Mất kết nối Chrome — đang thử lại');audioRetry();};
+  c.on('close',lost);c.on('error',lost);
+}
+document.getElementById('btn-audio-reconnect').onclick=()=>{
+  ++audioGeneration;audioConnecting=false;
+  if(audioConn)try{audioConn.close();}catch(e){}audioConn=null;
+  connectAudio();
 };
 
 // Song
@@ -475,7 +528,7 @@ document.getElementById('btn-save-key').onclick = () => {
 };
 document.getElementById('btn-test-voice').onclick = () => {
   document.getElementById('tts-status').textContent = 'Đang thử đọc...';
-  adminSpeak('Người chơi thử');
+  if (audioConn && audioConn.open) audioSend({type:'test-voice'}); else adminSpeak('Người chơi thử');
 };
 
 function setNameFrame(){
@@ -502,7 +555,7 @@ function addName() {
   renderList();
   broadcast({ type: 'add', name });
   pushState();
-  adminSpeak(name);
+  if (!(audioConn && audioConn.open)) adminSpeak(name);
 }
 function inviteGuestDj(){
   const value=document.getElementById('guest-dj-name').value.trim();
@@ -655,6 +708,11 @@ function playMusic() {
   audioEl.style.display = 'none';
   audioEl.pause();
   audioEl.removeAttribute('src');
+  if (audioConn && audioConn.open) {
+    box.classList.remove('show');
+    document.getElementById('music-status').textContent='Đã gửi nhạc sang Chrome — kiểm tra trạng thái âm thanh phía trên';
+    return;
+  }
   box.classList.add('show');
 
   if (p.type === 'audio') {
