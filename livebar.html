@@ -1217,6 +1217,7 @@ function speakVietnamese(text) {
 }
 
 function speakJoin(name) {
+  return; // Âm thanh chuyển sang dj-bar-audio.html (Chrome)
   const n = speakableName(name);
   if (!n) return;
   speakVietnamese(n + ' đã vào sàn nhảy');
@@ -1496,6 +1497,7 @@ function stopStageMusic() {
   document.getElementById('btn-music').textContent='Bật nhạc ▶';
 }
 function setStageMusic(url, revision) {
+  return; // Nguồn Website TikTok chỉ hiển thị hình, không phát tiếng
   if (revision !== undefined && revision < currentMusicRevision) return;
   if (revision !== undefined) currentMusicRevision = revision;
   if (url === currentMusicUrl) return;
