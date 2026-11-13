@@ -61,21 +61,18 @@ input:focus{border-color:#b14dff}
 </div>
 
 <div class="card">
-  <h2>Kết nối một màn hình Live</h2>
+  <h2>Mã phòng (đồng bộ điện thoại)</h2>
+  <div class="room-code" id="room-code">------</div>
   <div class="row">
-    <input id="room-input" value="BARLIVE001" maxlength="32" placeholder="Mã Live cố định" autocomplete="off"/>
-    <button class="btn btn-room" id="btn-connect-room">Kết nối Live</button>
+    <button class="btn btn-room" id="btn-new-room">Tạo mã phòng mới</button>
+    <button class="btn btn-stop" id="btn-copy-room">Sao chép mã</button>
   </div>
-  <p class="status"><span class="status-dot" id="conn-dot"></span><span id="conn-status">Đang khởi tạo...</span><span class="viewers" id="viewer-count"></span></p>
-  <p class="hint">Mở livebar.html trên thiết bị phát Live trước, sau đó bấm Kết nối Live tại đây. Chỉ điều khiển một Live tại một thời điểm, không cần chung Wi-Fi. Mã mặc định: BARLIVE001.</p>
+  <p class="status"><span class="status-dot" id="conn-dot"></span><span id="conn-status">Đang kết nối máy chủ...</span>
+    <span class="viewers" id="viewer-count"></span> <span class="viewers" id="audio-count"></span>
+  </p>
+  <p class="hint">Mở trang Sân khấu trên điện thoại → nhập mã phòng này. Không cần cùng Wi‑Fi hay cùng máy.</p>
 </div>
 
-<div class="card" style="border-color:rgba(0,255,168,.5)">
-  <h2>🔊 Bộ phát âm thanh Chrome — độc lập màn hình Live</h2>
-  <p class="status"><span class="status-dot" id="audio-dot"></span><span id="audio-status">Chờ Chrome mở dj-bar-audio.html...</span></p>
-  <p class="hint">Mở dj-bar-audio.html trong Chrome trên máy đang Live, bấm “Kích hoạt âm thanh” một lần. Admin sẽ tự kết nối cả Live và Chrome bằng cùng mã phòng. Bật thu âm thanh máy tính trong TikTok LIVE Studio.</p>
-  <div class="row" style="margin-top:10px"><button class="btn btn-add" id="btn-audio-reconnect">Kết nối lại âm thanh</button></div>
-</div>
 <div class="card">
   <h2>Tên bài hát (chữ LED)</h2>
   <div class="row">
@@ -149,12 +146,11 @@ input:focus{border-color:#b14dff}
     <input id="frame-name" list="guest-dj-options" placeholder="Tên người muốn gắn khung..."/>
     <select id="frame-style" style="flex:1;min-width:160px;padding:11px;border-radius:10px;background:#171a2b;color:white;border:1px solid #535875">
       <option value="none">Không khung (mặc định)</option>
-      <option value="gold">🥇 Gold Elite – Bậc 4</option>
+      <option value="gold">👑 Vàng hoàng gia</option>
       <option value="neon">💗 Neon hồng</option>
       <option value="ice">❄️ Kim cương xanh</option>
       <option value="fire">🔥 Lửa đỏ cam</option>
-      <option value="galaxy">🌌 Celestial – Bậc 5</option>
-      <option value="royal">👑 Royal Supreme – Hoàng gia (Bậc 6)</option>
+      <option value="galaxy">🌌 Ngân hà tím</option>
     </select>
     <button class="btn btn-add" id="btn-set-frame">Áp dụng khung</button>
   </div>
@@ -207,190 +203,95 @@ document.getElementById('btn-logout').onclick = () => {
   location.href = 'index.html';
 };
 
-// Admin kết nối đến một Live cố định. Chống kết nối chồng và tự phục hồi.
-const DEFAULT_LIVE_CODE = 'BARLIVE001';
-let reconnectTimer = null;
-let connecting = false;
-let connectAttempt = 0;
-let pendingConnection = null;
-let peerRestartTimer = null;
-let retryCount = 0;
-let lastPong = 0;
+function genCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let c = '';
+  for (let i = 0; i < 6; i++) c += chars[Math.floor(Math.random() * chars.length)];
+  return c;
+}
+
 function getState() {
   return { type: 'state', names: [...names], song, djLabel, ttsKey, musicUrl, musicRevision, guestDjName, specialDanceStyle, mcEnabled, mcPersonName, nameFrames: {...nameFrames} };
 }
-function setStatus(message, on) {
-  document.getElementById('conn-status').textContent = message;
+
+function broadcast(msg) {
+  connections = connections.filter(c => c.open);
+  connections.forEach(c => {
+    try { if (c.open) c.send(msg); } catch (e) {}
+  });
+  document.getElementById('viewer-count').textContent = connections.filter(c=>c.metadata?.role!=='audio').length ? ' · Live đã kết nối' : '';
+  document.getElementById('audio-count').textContent = connections.some(c=>c.metadata?.role==='audio') ? ' · Chrome âm thanh đã kết nối' : '';
+}
+
+function pushState() {
+  broadcast(getState());
+}
+
+function setStatus(text, on) {
+  document.getElementById('conn-status').textContent = text;
   document.getElementById('conn-dot').className = 'status-dot' + (on ? ' on' : '');
 }
-function broadcast(msg) {
-  audioSend(msg);
-  connections = connections.filter(c => c.open);
-  connections.forEach(c => { try { c.send(msg); } catch(e) {} });
-  document.getElementById('viewer-count').textContent = connections.length ? ' · 1 Live đang điều khiển' : '';
-}
-function pushState() { broadcast(getState()); }
-function scheduleReconnect() {
-  if (reconnectTimer || connections.some(c => c.open)) return;
-  const delay = Math.min(15000, 1800 * Math.pow(1.5, Math.min(retryCount++, 5)));
-  reconnectTimer = setTimeout(() => { reconnectTimer = null; connectLive(); }, delay);
-}
-function connectLive() {
-  clearTimeout(reconnectTimer); reconnectTimer = null;
-  if (connections.some(c => c.open) || connecting) return;
-  if (!peer || peer.destroyed || !peer.open) {
-    setStatus('Đang kết nối máy chủ tín hiệu...', false);
-    return;
-  }
-  const code = document.getElementById('room-input').value.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
-  if (!code) { setStatus('Nhập mã Live trước', false); return; }
-  roomCode = code;
-  try { localStorage.setItem('djbar_live_code', code); } catch(e) {}
-  connecting = true;
-  const attempt = ++connectAttempt;
-  setStatus('Đang kết nối màn hình Live...', false);
-  let c;
-  try { c = peer.connect('djbar-' + code, { reliable: true, serialization: 'json' }); }
-  catch(e) { connecting = false; setStatus('Chưa kết nối được · sẽ thử lại', false); scheduleReconnect(); return; }
-  pendingConnection = c;
-  let completed = false;
-  // ICE/WebRTC trên mạng di động có thể mất hơn 6 giây.
-  const timeout = setTimeout(() => {
-    if (completed || attempt !== connectAttempt) return;
-    connecting = false; pendingConnection = null;
-    try { c.close(); } catch(e) {}
-    setStatus('Live chưa phản hồi · tự thử lại...', false);
-    scheduleReconnect();
-  }, 18000);
-  c.on('open', () => {
-    if (attempt !== connectAttempt || completed) { try { c.close(); } catch(e) {} return; }
-    completed = true; clearTimeout(timeout); connecting = false; pendingConnection = null;
-    connections.forEach(old => { if (old !== c) try { old.close(); } catch(e) {} });
-    connections = [c]; retryCount = 0; lastPong = Date.now();
-    setStatus('Đã kết nối Live', true);
-    try { c.send(getState()); } catch(e) {}
-    document.getElementById('viewer-count').textContent = ' · 1 Live đang điều khiển';
-  });
-  c.on('data', data => {
-    if (data && data.type === 'pong') { lastPong = Date.now(); return; }
-    if (data && data.type === 'hello' && c.open) { lastPong = Date.now(); c.send(getState()); }
-  });
-  function lost() {
-    clearTimeout(timeout);
-    if (attempt !== connectAttempt) return;
-    connecting = false;
-    if (pendingConnection === c) pendingConnection = null;
-    connections = connections.filter(x => x !== c);
-    if (!connections.length) {
-      setStatus('Mất kết nối Live · đang khôi phục...', false);
-      document.getElementById('viewer-count').textContent = '';
-      scheduleReconnect();
-    }
-  }
-  c.on('close', lost);
-  c.on('error', lost);
-}
-// Ping giúp phát hiện kết nối đã chết nhưng trình duyệt chưa báo close.
-setInterval(() => {
-  const c = connections.find(x => x.open);
-  if (!c) return;
-  if (Date.now() - lastPong > 35000) {
-    setStatus('Live không phản hồi · đang khôi phục...', false);
-    connectAttempt++;
-    connections = [];
-    try { c.close(); } catch(e) {}
-    connecting = false;
-    scheduleReconnect();
-    return;
-  }
-  try { c.send({type:'ping'}); } catch(e) {}
-}, 10000);
-function initAdminPeer() {
-  clearTimeout(peerRestartTimer);
-  connectAttempt++; connecting = false; pendingConnection = null;
-  if (peer) try { peer.destroy(); } catch(e) {}
-  peer = new Peer({
-    debug: 0,
-    config: { iceServers: [
-      { urls: 'stun:stun.l.google.com:19302' },
-      { urls: 'stun:global.stun.twilio.com:3478' }
-    ] }
-  });
-  const currentPeer = peer;
-  peer.on('open', () => { if (peer !== currentPeer) return; setStatus('Sẵn sàng kết nối Live', false); retryCount = 0; connectLive(); connectAudio(); });
-  peer.on('disconnected', () => {
-    if (peer !== currentPeer) return;
-    setStatus('Mất máy chủ tín hiệu · đang khôi phục...', false);
-    try { currentPeer.reconnect(); } catch(e) {}
-    clearTimeout(peerRestartTimer);
-    peerRestartTimer = setTimeout(() => { if (peer === currentPeer && !currentPeer.open) initAdminPeer(); }, 12000);
-  });
-  peer.on('error', err => {
-    if (peer !== currentPeer) return;
-    console.warn('Admin PeerJS:', err);
-    if (err.type === 'peer-unavailable') { connecting = false; scheduleReconnect(); return; }
-    setStatus('Lỗi tín hiệu: ' + (err.type || 'mạng'), false);
-    if (!currentPeer.open || currentPeer.destroyed) {
-      clearTimeout(peerRestartTimer);
-      peerRestartTimer = setTimeout(() => { if (peer === currentPeer) initAdminPeer(); }, 5000);
-    } else { connecting = false; scheduleReconnect(); }
-  });
-}
-document.getElementById('btn-connect-room').onclick = () => {
-  connectAttempt++; connecting = false; retryCount = 0;
-  clearTimeout(reconnectTimer); reconnectTimer = null;
-  if (pendingConnection) try { pendingConnection.close(); } catch(e) {}
-  pendingConnection = null;
-  connections.forEach(c => { try { c.close(); } catch(e) {} });
+
+function startHost(code) {
+  if (peer) { try { peer.destroy(); } catch (e) {} }
   connections = [];
-  document.getElementById('viewer-count').textContent = '';
-  connectLive();
-  ++audioGeneration; audioConnecting=false; if(audioConn)try{audioConn.close();}catch(e){} audioConn=null; connectAudio();
-};
+  roomCode = code;
+  document.getElementById('room-code').textContent = code;
+  setStatus('Đang tạo phòng...', false);
 
+  peer = new Peer('djbar-' + code, {
+    debug: 1,
+    config: {
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:global.stun.twilio.com:3478' }
+      ]
+    }
+  });
 
-// Bộ phát âm thanh Chrome có Peer ID riêng; không chiếm kết nối màn hình Live.
-let audioConn = null, audioConnecting = false, audioRetryTimer = null, audioGeneration = 0;
-function audioStatus(message, ok=false) {
-  document.getElementById('audio-status').textContent=message;
-  document.getElementById('audio-dot').className='status-dot'+(ok?' on':'');
-}
-function audioSend(msg) { if(audioConn && audioConn.open) try{audioConn.send(msg);}catch(e){} }
-function audioRetry() {
-  clearTimeout(audioRetryTimer);
-  audioRetryTimer=setTimeout(connectAudio, 3500);
-}
-function connectAudio() {
-  clearTimeout(audioRetryTimer); audioRetryTimer=null;
-  if(audioConn && audioConn.open || audioConnecting) return;
-  if(!peer || !peer.open || peer.destroyed) {audioRetry();return;}
-  const code=(document.getElementById('room-input').value||DEFAULT_LIVE_CODE).trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
-  if(!code)return;
-  const generation=++audioGeneration;
-  audioConnecting=true;
-  audioStatus('Đang tìm Chrome phát âm thanh...');
-  let c;
-  try{c=peer.connect('djbar-audio-'+code,{reliable:true,serialization:'json'});}catch(e){audioConnecting=false;audioRetry();return;}
-  const timeout=setTimeout(()=>{if(generation!==audioGeneration)return;audioConnecting=false;try{c.close();}catch(e){}audioRetry();},14000);
-  c.on('open',()=>{
-    if(generation!==audioGeneration){c.close();return;}
-    clearTimeout(timeout);audioConnecting=false;
-    if(audioConn && audioConn!==c)try{audioConn.close();}catch(e){}
-    audioConn=c;audioStatus('Chrome đã kết nối — chờ kích hoạt / sẵn sàng phát',true);
-    audioSend(getState());
+  peer.on('open', id => {
+    setStatus('Phòng sẵn sàng — chờ sân khấu kết nối', true);
+    try { localStorage.setItem('djbar_last_room', code); } catch (e) {}
   });
-  c.on('data',d=>{
-    if(generation!==audioGeneration||!d)return;
-    if(d.type==='audio-status')audioStatus('Chrome: '+String(d.message||'Đã kết nối'),!!d.ready);
-    if(d.type==='hello')audioSend(getState());
+
+  peer.on('connection', conn => {
+    conn.on('open', () => {
+      connections.push(conn);
+      conn.send(getState());
+      setStatus('Đã kết nối sân khấu', true);
+      document.getElementById('viewer-count').textContent = connections.some(c=>c.metadata?.role!=='audio') ? ' · Live đã kết nối' : '';
+      document.getElementById('audio-count').textContent = connections.some(c=>c.metadata?.role==='audio') ? ' · Chrome âm thanh đã kết nối' : '';
+    });
+    conn.on('close', () => {
+      connections = connections.filter(c => c !== conn);
+      document.getElementById('viewer-count').textContent = connections.some(c=>c.metadata?.role!=='audio') ? ' · Live đã kết nối' : '';
+      document.getElementById('audio-count').textContent = connections.some(c=>c.metadata?.role==='audio') ? ' · Chrome âm thanh đã kết nối' : '';
+    });
+    conn.on('data', data => {
+      if (data && data.type === 'hello') conn.send(getState());
+    });
   });
-  const lost=()=>{clearTimeout(timeout);if(generation!==audioGeneration)return;audioConnecting=false;if(audioConn===c)audioConn=null;audioStatus('Mất kết nối Chrome — đang thử lại');audioRetry();};
-  c.on('close',lost);c.on('error',lost);
+
+  peer.on('error', err => {
+    console.warn(err);
+    if (String(err).includes('taken') || (err.type === 'unavailable-id')) {
+      setStatus('Mã BARLIVE001 đang được sử dụng. Hãy đóng tab Admin cũ rồi tải lại.', false);
+      return;
+    }
+    setStatus('Lỗi kết nối: ' + (err.type || err.message || err), false);
+  });
+
+  peer.on('disconnected', () => {
+    setStatus('Mất kết nối máy chủ, đang thử lại...', false);
+    try { peer.reconnect(); } catch (e) {}
+  });
 }
-document.getElementById('btn-audio-reconnect').onclick=()=>{
-  ++audioGeneration;audioConnecting=false;
-  if(audioConn)try{audioConn.close();}catch(e){}audioConn=null;
-  connectAudio();
+
+document.getElementById('btn-new-room').onclick = () => startHost('BARLIVE001');
+document.getElementById('btn-copy-room').onclick = () => {
+  navigator.clipboard.writeText(roomCode).then(() => {
+    document.getElementById('conn-status').textContent = 'Đã sao chép mã phòng!';
+  }).catch(() => alert('Mã phòng: ' + roomCode));
 };
 
 // Song
@@ -528,7 +429,7 @@ document.getElementById('btn-save-key').onclick = () => {
 };
 document.getElementById('btn-test-voice').onclick = () => {
   document.getElementById('tts-status').textContent = 'Đang thử đọc...';
-  if (audioConn && audioConn.open) audioSend({type:'test-voice'}); else adminSpeak('Người chơi thử');
+  adminSpeak('Người chơi thử');
 };
 
 function setNameFrame(){
@@ -555,7 +456,7 @@ function addName() {
   renderList();
   broadcast({ type: 'add', name });
   pushState();
-  if (!(audioConn && audioConn.open)) adminSpeak(name);
+  if (!connections.some(c=>c.open && c.metadata?.role==='audio')) adminSpeak(name);
 }
 function inviteGuestDj(){
   const value=document.getElementById('guest-dj-name').value.trim();
@@ -708,11 +609,6 @@ function playMusic() {
   audioEl.style.display = 'none';
   audioEl.pause();
   audioEl.removeAttribute('src');
-  if (audioConn && audioConn.open) {
-    box.classList.remove('show');
-    document.getElementById('music-status').textContent='Đã gửi nhạc sang Chrome — kiểm tra trạng thái âm thanh phía trên';
-    return;
-  }
   box.classList.add('show');
 
   if (p.type === 'audio') {
@@ -755,15 +651,17 @@ document.getElementById('btn-play').onclick = playMusic;
 document.getElementById('btn-stop').onclick = stopMusic;
 document.getElementById('music-url').addEventListener('keydown', e => { if (e.key === 'Enter') playMusic(); });
 
-// Khởi tạo Admin, tự tìm Live khi mở trang.
+// Init room
 updateLedPreview();
 renderList();
-try { document.getElementById('room-input').value = localStorage.getItem('djbar_live_code') || DEFAULT_LIVE_CODE; } catch(e) {}
-initAdminPeer();
+let last = '';
+try { last = localStorage.getItem('djbar_last_room') || ''; } catch (e) {}
+startHost('BARLIVE001');
 if (window.speechSynthesis) {
   window.speechSynthesis.getVoices();
   window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
 }
+
 </script>
 </body>
 </html>
